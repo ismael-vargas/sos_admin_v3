@@ -1,0 +1,62 @@
+/* SCSS Styles (perfil.scss): */
+/*-----------------------------------------*/
+.profile-header {
+  // Estilo para el encabezado del perfil, incluyendo un fondo degradado y estilos generales.
+  background: linear-gradient(145deg, #153453, #007e7e); // Fondo con degradado en un ángulo de 145 grados.
+  padding: 3rem 1rem; // Espaciado interno de 3rem arriba y abajo, 1rem a los lados.
+  color: white; // Color de texto blanco.
+  border-radius: 10px; // Bordes redondeados con un radio de 10px.
+  font-size: 1.2rem; // Ajusta el valor según lo grande que quieras el texto
+
+  .profile-image,
+  .profile-placeholder {
+      // Estilo compartido para la imagen de perfil o el contenedor en su ausencia.
+      width: 150px; // Ancho fijo de 150px.
+      height: 150px; // Alto fijo de 150px.
+      border: 5px solid rgba(255, 255, 255, 0.2); // Borde blanco semitransparente de 5px.
+  }
+
+  .profile-placeholder {
+      // Estilo específico para el contenedor de la imagen de perfil en caso de que no haya una imagen.
+      background-color: rgba(36, 36, 36, 0.548); // Fondo blanco muy transparente.
+  }
+
+  .text-truncate {
+      // Estilo para truncar texto que excede el ancho disponible.
+      white-space: nowrap; // Evita que el texto pase a la siguiente línea.
+      overflow: hidden; // Oculta cualquier contenido que exceda el contenedor.
+      text-overflow: ellipsis; // Muestra puntos suspensivos (...) si el texto es demasiado largo.
+  }
+    
+  .info-card {
+      // Estilo para las tarjetas de información en el perfil.
+      display: flex; // Usa flexbox para alinear elementos en línea.
+      align-items: center; // Alinea los elementos verticalmente al centro.
+      gap: 1rem; // Espaciado horizontal entre el icono y el texto.
+      transition: transform 0.3s ease-in-out; // Transición suave para efectos de movimiento.
+      cursor: pointer; // Cambia el cursor a una mano al pasar sobre la tarjeta.
+    
+      .info-card-icon {
+          // Estilo específico para el icono dentro de la tarjeta de información.
+          flex-shrink: 0; // Evita que el icono cambie de tamaño al ajustar el contenido.
+      }
+    
+      .info-card-content {
+          // Estilo para el contenedor de texto dentro de la tarjeta de información.
+          flex-grow: 1; // Permite que el contenido ocupe todo el espacio disponible.
+          overflow: hidden; // Oculta cualquier contenido que exceda el contenedor.
+          white-space: nowrap; // Evita que el texto pase a la siguiente línea.
+          text-overflow: ellipsis; // Agrega puntos suspensivos (...) si el texto es muy largo.
+      }
+  }
+}
+
+.info-card-label,
+.info-card-text {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.86rem; // Cambia el tamaño a tu gusto
+    font-weight: 500;
+}
