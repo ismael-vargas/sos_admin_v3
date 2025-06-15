@@ -1,32 +1,80 @@
-/*login.jsx */
-/* -------------------*/
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../assets/scss/login.scss";
+import instance from "../../api/axios";
+import Swal from "sweetalert2";
 
-// Ruta base de las imágenes
 const BASE_IMG_URL = "./assets/img";
 
 const Login = () => {
-  const [email, setEmail] = useState("");  // Estado para el email
-  const [password, setPassword] = useState("");  // Estado para la contraseña
-  const [error, setError] = useState(""); // Estado para manejar errores de autenticación
-  const navigate = useNavigate();  // Navegación entre rutas
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [csrfToken, setCsrfToken] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  // Credenciales predeterminadas para la simulación
-  const validEmail = "usuario@ejemplo.com";
-  const validPassword = "123456";
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await instance.get("/csrf-token");
+        setCsrfToken(response.data.csrfToken);
+      } catch (error) {
+        console.error("Error al obtener el token CSRF:", error);
+      }
+    };
+    fetchCsrfToken();
+  }, []);
 
-  // Maneja el envío del formulario
-  const handleSubmit = (e) => {
-    e.preventDefault();  // Prevenir el comportamiento predeterminado del formulario
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    // Validación simple
-    if (email === validEmail && password === validPassword) {
-      setError("");  // Limpiar el error
-      navigate("/");  // Redirige al usuario a la ruta principal
-    } else {
-      setError("Correo electrónico o contraseña incorrectos.");
+    try {
+      const response = await instance.post(
+        "/login",
+        {
+          correo_electronico: email,
+          contrasena: password,
+        },
+        {
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        }
+      );
+
+      if (response.status === 200) {
+Swal.fire({
+  icon: "success",
+  title: "¡Inicio de sesión exitoso!",
+  html: `<strong class="custom-welcome">Bienvenido, ${response.data?.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
+  timer: 1300, // ⏱️ cortito
+  timerProgressBar: true, // 🟩 flechita de carga
+  showConfirmButton: false,
+  allowOutsideClick: false,
+  allowEscapeKey: false,
+  didOpen: () => {
+    const content = Swal.getHtmlContainer();
+    if (content) {
+      content.querySelector("strong")?.classList.add("custom-welcome");
+    }
+  },
+});
+
+        setTimeout(() => {
+          navigate("/");
+        }, 1300);
+      } else {
+        setError("Credenciales inválidas.");
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire({
+        icon: "error",
+        title: "Error al iniciar sesión",
+        text: err.response?.data?.message || "Ha ocurrido un error inesperado.",
+        confirmButtonText: "Entendido",
+        confirmButtonColor: "#d33",
+      });
     }
   };
 
@@ -37,7 +85,7 @@ const Login = () => {
           <img
             src={`${BASE_IMG_URL}/icon.png`}
             alt="SOS 911"
-            className="login-logo"  // Estilo de la imagen del logo
+            className="login-logo"
           />
           <h1 className="login-title">
             <span className="sos-text">Sos</span>
@@ -45,7 +93,9 @@ const Login = () => {
           </h1>
         </div>
         <p className="login-subtitle">Un toque para tu seguridad</p>
-        {error && <div className="alert alert-danger">{error}</div>} {/* Mostrar error */}
+
+        {error && <div className="alert alert-danger">{error}</div>}
+
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="mb-3 position-relative">
             <span className="login-icon">
@@ -56,7 +106,8 @@ const Login = () => {
               placeholder="Usuario"
               className="form-control login-input ps-5"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}  // Actualiza el estado del email
+              onChange={(e) => setEmail(e.target.value)}
+              required
             />
           </div>
           <div className="mb-3 position-relative">
@@ -68,28 +119,33 @@ const Login = () => {
               placeholder="Contraseña"
               className="form-control login-input ps-5"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}  // Actualiza el estado de la contraseña
+              onChange={(e) => setPassword(e.target.value)}
+              required
             />
           </div>
-          {/* Checkbox para la opción "Recuérdame", que permitiría mantener la sesión iniciada */}
+
           <div className="form-check text-start mb-3">
             <input
-              type="checkbox"  // Input tipo checkbox
+              type="checkbox"
               className="form-check-input"
-              id="remember"  // Identificador único para asociarlo con el label
+              id="remember"
             />
             <label htmlFor="remember" className="form-check-label">
               Recuérdame
             </label>
           </div>
 
-          {/* Botón para enviar el formulario e iniciar sesión */}
-          <button type="submit" className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2">
+          <button
+            type="submit"
+            className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+          >
             Iniciar Sesión
-            <i className="bi bi-arrow-right-circle" style={{ fontSize: "1.3rem", color: "#fff" }}></i>
+            <i
+              className="bi bi-arrow-right-circle"
+              style={{ fontSize: "1.3rem", color: "#fff" }}
+            ></i>
           </button>
 
-          {/* Texto con enlace para redirigir a la página de registro si el usuario no tiene cuenta */}
           <p className="login-register-text mt-3">
             ¿Aún no eres miembro? Haz clic{" "}
             <a href="/registro" className="login-link">

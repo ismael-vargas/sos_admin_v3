@@ -1,69 +1,54 @@
-/* gestion_usuarios.jsx */
-/* -------------------*/
-// Importación React, hooks y librerías necesarias
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search, Trash } from "lucide-react";
 import UsuarioModal from "./usuario_modal.jsx";
 import "../../assets/scss/gestion_usuarios.scss";
 
-
-// Definimos la constante que contiene la base de la URL para las imágenes
 const BASE_IMG_URL = "/assets/img/";
+const DEFAULT_IMG = "foto3.jpg";
 
-// Componente UsuarioCard: Representa una tarjeta individual de usuario
-function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelected, isDeleted }) {
+function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelected, isEliminado }) {
     return (
         <div
-            // Clase dinámica basada en si el usuario está eliminado
-            className={`col ${isDeleted ? "bg-light text-danger" : ""}`}
+            className={`col ${isEliminado ? "bg-light text-danger" : ""}`}
             style={{
-                transition: "transform 0.3s ease, box-shadow 0.3s ease", // Transiciones para animaciones suaves
-                opacity: isDeleted ? 0.5 : 1, // Reducimos la opacidad si el usuario está eliminado
+                transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                opacity: isEliminado ? 0.5 : 1,
             }}
             onMouseEnter={(e) => {
-                // Efecto zoom al pasar el mouse, solo si no está eliminado
-                if (!isDeleted) {
+                if (!isEliminado) {
                     e.currentTarget.style.transform = "scale(1.05)";
                     e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
                 }
             }}
             onMouseLeave={(e) => {
-                // Eliminamos el efecto zoom cuando el mouse sale de la tarjeta
-                if (!isDeleted) {
+                if (!isEliminado) {
                     e.currentTarget.style.transform = "scale(1)";
                     e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.1)";
                 }
             }}
         >
             <div className="card border-0 shadow-sm rounded-3 overflow-hidden">
-                {/* Imagen del usuario */}
                 <img
-                    src={`${BASE_IMG_URL}${usuario.imagen}`}
+                    src={`${BASE_IMG_URL}${usuario.imagen || DEFAULT_IMG}`}
                     className="card-img-top"
                     alt={`Imagen de ${usuario.nombre}`}
-                    style={{
-                        objectFit: "cover", // Aseguramos que la imagen se ajuste sin distorsión
-                        height: "200px", // Altura fija de la imagen
-                        width: "100%", // Ancho completo de la tarjeta
-                    }}
+                    style={{ objectFit: "cover", height: "200px", width: "100%" }}
                 />
-                {/* Cuerpo de la tarjeta */}
                 <div className="card-body bg-dark text-white text-center">
                     <h6 className="card-title mb-2" style={{ fontSize: "calc(1rem + 2px)" }}>
-                        {usuario.nombre} {/* Nombre del usuario */}
+                        {usuario.nombre}
                     </h6>
-                    {/* Botón para ver más información */}
                     <button className="btn btn-primary btn-sm" onClick={() => onVerInformacionClick(usuario)}>
                         Ver Información
                     </button>
-                    {/* Checkbox para seleccionar al usuario */}
                     <div className="form-check mt-2">
                         <input
                             type="checkbox"
                             className="form-check-input"
                             checked={isSelected}
                             onChange={() => onSelectUsuario(usuario.id)}
+                            disabled={isEliminado}
                         />
                     </div>
                 </div>
@@ -72,73 +57,82 @@ function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelect
     );
 }
 
-// Componente principal para gestionar usuarios
 function GestionUsuarios() {
-    // Estado inicial de los usuarios
-    const [usuarios, setUsuarios] = useState([
-        { id: 1, nombre: "Ismael Vargas", correo: "ism@gmail.com", telefono: "0962658076", cedula: "1729356269", direccion: "Panecillo", imagen: "perfil.jpg", eliminado: false },
-        { id: 2, nombre: "Juan Pérez", imagen: "foto10.jpg", eliminado: false },
-        { id: 3, nombre: "María López", imagen: "foto9.jpg", eliminado: false },
-        { id: 4, nombre: "Carlos Gómez", imagen: "foto3.jpg", eliminado: false },
-        { id: 5, nombre: "Ana Ramírez", imagen: "foto2.jpg", eliminado: false },
-        { id: 6, nombre: "Pedro Martínez", imagen: "foto4.jpg", eliminado: false },
-        { id: 7, nombre: "Luz Fernández", imagen: "chica2.jpg", eliminado: false },
-        { id: 8, nombre: "Erika Pozo", imagen: "chica.jpg", eliminado: false },
-        { id: 9, nombre: "Juanita Pérez", imagen: "chica3.jpg", eliminado: false },
-        { id: 10, nombre: "Carlos Rodríguez", imagen: "chica4.jpg", eliminado: false },
-    ]);
+    const [usuarios, setUsuarios] = useState([]);
+    const [busqueda, setBusqueda] = useState("");
+    const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null);
+    const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
+    const [paginaActual, setPaginaActual] = useState(1);
+    const usuariosPorPagina = 8;
 
-    const [busqueda, setBusqueda] = useState(""); // Búsqueda dinámica por nombre
-    const [usuarioSeleccionado, setUsuarioSeleccionado] = useState(null); // Usuario seleccionado para más información
-    const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]); // Lista de IDs seleccionados
-    const [paginaActual, setPaginaActual] = useState(1); // Página actual de la paginación
+    useEffect(() => {
+        fetch("http://localhost:9000/usuarios")
+            .then((res) => res.json())
+            .then((data) => setUsuarios(data))
+            .catch((err) => console.error("Error al obtener usuarios:", err));
+    }, []);
 
-    const usuariosPorPagina = 8; // Número de usuarios a mostrar por página
+const eliminarUsuario = async (id) => {
+  try {
+    const csrfToken = localStorage.getItem('csrfToken'); // 🔐 asegúrate que este sea el mismo que el backend generó
 
-    // Filtramos usuarios por coincidencia en el nombre
-    const usuariosFiltrados = usuarios.filter((usuario) =>
-        usuario.nombre.toLowerCase().includes(busqueda.toLowerCase())
-    );
+    const response = await fetch(`http://localhost:9000/usuarios/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'CSRF-Token': csrfToken // 🔥 clave: debe coincidir con el nombre exacto
+      },
+      credentials: 'include', // 🔐 permite que se envíe la cookie connect.sid
+    });
 
-    // Ordenamos los usuarios, colocando los eliminados al final
-    const usuariosOrdenados = [
-        ...usuariosFiltrados.filter((usuario) => !usuario.eliminado),
-        ...usuariosFiltrados.filter((usuario) => usuario.eliminado),
-    ];
+    const result = await response.text(); // Esto captura cualquier error HTML
+    console.log('Detalles del error:', result);
 
-    // Lógica de paginación
-    const indexOfLastUser = paginaActual * usuariosPorPagina;
-    const indexOfFirstUser = indexOfLastUser - usuariosPorPagina;
-    const usuariosMostrados = usuariosOrdenados.slice(indexOfFirstUser, indexOfLastUser);
+    if (!response.ok) {
+      throw new Error('Error al eliminar usuario');
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
 
-    const totalPaginas = Math.ceil(usuariosOrdenados.length / usuariosPorPagina);
 
-    // Función para marcar usuarios como eliminados
+
     const handleEliminarUsuarios = () => {
-        const usuariosActualizados = usuarios.map((usuario) =>
-            usuariosSeleccionados.includes(usuario.id) ? { ...usuario, eliminado: true } : usuario
-        );
-        setUsuarios(usuariosActualizados);
+        usuariosSeleccionados.forEach((id) => eliminarUsuario(id));
         setUsuariosSeleccionados([]);
     };
 
-    // Función para manejar la selección de usuarios
+    const handleEstadoDesdeModal = (id, nuevoEstado) => {
+        if (nuevoEstado === "eliminado") eliminarUsuario(id);
+    };
+
     const handleSeleccionarUsuario = (id) => {
-        setUsuariosSeleccionados((prevSeleccionados) =>
-            prevSeleccionados.includes(id)
-                ? prevSeleccionados.filter((usuarioId) => usuarioId !== id)
-                : [...prevSeleccionados, id]
+        setUsuariosSeleccionados((prev) =>
+            prev.includes(id) ? prev.filter((uid) => uid !== id) : [...prev, id]
         );
     };
 
-    // Función para cambiar de página en la paginación
-    const handleCambiarPagina = (numeroPagina) => {
-        setPaginaActual(numeroPagina);
+    const usuariosFiltrados = usuarios.filter((u) =>
+        u.nombre?.toLowerCase().includes(busqueda.toLowerCase())
+    );
+
+    const usuariosOrdenados = [
+        ...usuariosFiltrados.filter((u) => u.estado !== "eliminado"),
+        ...usuariosFiltrados.filter((u) => u.estado === "eliminado"),
+    ];
+
+    const indexOfLastUser = paginaActual * usuariosPorPagina;
+    const indexOfFirstUser = indexOfLastUser - usuariosPorPagina;
+    const usuariosMostrados = usuariosOrdenados.slice(indexOfFirstUser, indexOfLastUser);
+    const totalPaginas = Math.ceil(usuariosOrdenados.length / usuariosPorPagina);
+
+    const handleCambiarPagina = (pagina) => {
+        setPaginaActual(pagina);
     };
 
     return (
         <div>
-            {/* Encabezado de la página */}
             <h1 className="page-header">
                 Gestión de Usuarios <small>administración de usuarios</small>
             </h1>
@@ -148,7 +142,6 @@ function GestionUsuarios() {
                     <h4 className="panel-title">Usuarios</h4>
                 </PanelHeader>
                 <PanelBody>
-                    {/* Barra de búsqueda y acciones */}
                     <div className="row mb-3">
                         <div className="col-12 d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <div className="input-group" style={{ maxWidth: "400px" }}>
@@ -163,19 +156,16 @@ function GestionUsuarios() {
                                     <Search size={18} />
                                 </span>
                             </div>
-                            <div className="d-flex flex-wrap gap-2">
-                                <button
-                                    className="btn btn-danger"
-                                    onClick={handleEliminarUsuarios}
-                                    disabled={usuariosSeleccionados.length === 0}
-                                >
-                                    <Trash size={18} /> Eliminar
-                                </button>
-
-                            </div>
+                            <button
+                                className="btn btn-danger"
+                                onClick={handleEliminarUsuarios}
+                                disabled={usuariosSeleccionados.length === 0}
+                            >
+                                <Trash size={18} /> Eliminar
+                            </button>
                         </div>
                     </div>
-                    {/* Contenedor de las tarjetas de usuarios */}
+
                     <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
                         {usuariosMostrados.map((usuario) => (
                             <UsuarioCard
@@ -184,40 +174,30 @@ function GestionUsuarios() {
                                 onVerInformacionClick={setUsuarioSeleccionado}
                                 onSelectUsuario={handleSeleccionarUsuario}
                                 isSelected={usuariosSeleccionados.includes(usuario.id)}
-                                isDeleted={usuario.eliminado}
+                                isEliminado={usuario.estado === "eliminado"}
                             />
                         ))}
                     </div>
 
-                    {/* Navegación para la paginación */}
                     <nav aria-label="Page navigation" className="mt-4">
                         <ul className="pagination justify-content-end">
                             <li className={`page-item ${paginaActual === 1 ? "disabled" : ""}`}>
-                                <button
-                                    className="page-link"
-                                    onClick={() => handleCambiarPagina(paginaActual - 1)}
-                                >
+                                <button className="page-link" onClick={() => handleCambiarPagina(paginaActual - 1)}>
                                     Anterior
                                 </button>
                             </li>
-                            {[...Array(totalPaginas)].map((_, index) => (
+                            {[...Array(totalPaginas)].map((_, i) => (
                                 <li
-                                    key={index}
-                                    className={`page-item ${paginaActual === index + 1 ? "active" : ""}`}
+                                    key={i}
+                                    className={`page-item ${paginaActual === i + 1 ? "active" : ""}`}
                                 >
-                                    <button
-                                        className="page-link"
-                                        onClick={() => handleCambiarPagina(index + 1)}
-                                    >
-                                        {index + 1}
+                                    <button className="page-link" onClick={() => handleCambiarPagina(i + 1)}>
+                                        {i + 1}
                                     </button>
                                 </li>
                             ))}
                             <li className={`page-item ${paginaActual === totalPaginas ? "disabled" : ""}`}>
-                                <button
-                                    className="page-link"
-                                    onClick={() => handleCambiarPagina(paginaActual + 1)}
-                                >
+                                <button className="page-link" onClick={() => handleCambiarPagina(paginaActual + 1)}>
                                     Siguiente
                                 </button>
                             </li>
@@ -226,11 +206,11 @@ function GestionUsuarios() {
                 </PanelBody>
             </Panel>
 
-            {/* Modal para mostrar información del usuario */}
             {usuarioSeleccionado && (
                 <UsuarioModal
                     usuario={usuarioSeleccionado}
                     onClose={() => setUsuarioSeleccionado(null)}
+                    onEstadoChange={handleEstadoDesdeModal}
                 />
             )}
         </div>
