@@ -6,6 +6,11 @@ import Swal from "sweetalert2";
 
 const BASE_IMG_URL = "./assets/img";
 
+export const logout = (navigate) => {
+  localStorage.removeItem("usuario_id"); // Elimina el estado de autenticación
+  navigate("/login"); // Redirige al login
+};
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,31 +48,36 @@ const Login = () => {
       );
 
       if (response.status === 200) {
-Swal.fire({
-  icon: "success",
-  title: "¡Inicio de sesión exitoso!",
-  html: `<strong class="custom-welcome">Bienvenido, ${response.data?.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
-  timer: 1300, // ⏱️ cortito
-  timerProgressBar: true, // 🟩 flechita de carga
-  showConfirmButton: false,
-  allowOutsideClick: false,
-  allowEscapeKey: false,
-  didOpen: () => {
-    const content = Swal.getHtmlContainer();
-    if (content) {
-      content.querySelector("strong")?.classList.add("custom-welcome");
-    }
-  },
-});
+        localStorage.setItem("usuario_id", response.data.usuario_id);
+
+        // Alerta de éxito con SweetAlert
+        Swal.fire({
+          icon: "success",
+          title: "¡Inicio de sesión exitoso!",
+          html: `<strong class="custom-welcome">Bienvenido, ${response.data?.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
+          timer: 1300, // ⏱️ cortito
+          timerProgressBar: true, // 🟩 flechita de carga
+          showConfirmButton: false,
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          didOpen: () => {
+            const content = Swal.getHtmlContainer();
+            if (content) {
+              content.querySelector("strong")?.classList.add("custom-welcome");
+            }
+          },
+        });
 
         setTimeout(() => {
-          navigate("/");
+          navigate("/dashboard"); // Redirige al dashboard
         }, 1300);
       } else {
         setError("Credenciales inválidas.");
       }
     } catch (err) {
       console.error(err);
+
+      // Alerta de error con SweetAlert
       Swal.fire({
         icon: "error",
         title: "Error al iniciar sesión",

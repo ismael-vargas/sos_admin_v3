@@ -1,12 +1,13 @@
 /* rol.jsx */
 /* -------------------*/
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import RolModal from "./rolModal.jsx";
+import Swal from "sweetalert2";
 
-// Definimos la constante que contiene la base de la URL para las imágenes
-const BASE_IMG_URL = "./assets/img";
+const BASE_IMG_URL = "/assets/img/usuario.jpg"; // Ruta de la imagen predeterminada
 
 // Componente para la barra de búsqueda
 function Buscador({ busqueda, setBusqueda }) {
@@ -31,15 +32,15 @@ function RolCard({ rol, onFlechaClick, onSelectRol, isSelected }) {
   return (
     <div className="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
       <div
-        className={`card border-0 shadow-sm rounded-3 overflow-hidden ${rol.eliminado ? "bg-light text-danger" : ""}`}
+        className={`card border-0 shadow-sm rounded-3 overflow-hidden ${rol.estado === "eliminado" ? "bg-light text-danger" : ""}`}
         style={{
-          transition: rol.eliminado ? "none" : "transform 0.3s ease, box-shadow 0.3s ease",
-          opacity: rol.eliminado ? 0.5 : 1,
+          transition: rol.estado === "eliminado" ? "none" : "transform 0.2s ease, box-shadow 0.2s ease",
+          opacity: rol.estado === "eliminado" ? 0.5 : 1,
         }}
         onMouseEnter={(e) => {
-          if (!rol.eliminado) {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.3)";
+          if (rol.estado !== "eliminado") {
+            e.currentTarget.style.transform = "scale(1.05)"; // Reducir el zoom
+            e.currentTarget.style.boxShadow = "0 4px 15px rgba(0, 0, 0, 0.2)"; // Reducir la sombra
           }
         }}
         onMouseLeave={(e) => {
@@ -48,7 +49,7 @@ function RolCard({ rol, onFlechaClick, onSelectRol, isSelected }) {
         }}
       >
         <img
-          src={rol.imagen}
+          src={BASE_IMG_URL}
           className="card-img-top"
           alt={`Imagen de ${rol.nombre}`}
           style={{ objectFit: "cover", height: "200px", width: "100%" }}
@@ -63,7 +64,6 @@ function RolCard({ rol, onFlechaClick, onSelectRol, isSelected }) {
             >
               Ver Información
             </button>
-
           </div>
           <div className="form-check mt-2">
             <input
@@ -76,74 +76,6 @@ function RolCard({ rol, onFlechaClick, onSelectRol, isSelected }) {
             <label className="form-check-label" htmlFor={`select-${rol.id}`}></label>
           </div>
         </div>
-
-
-      </div>
-    </div>
-  );
-}
-
-// Modal para agregar un nuevo rol
-function AgregarRolModal({ show, onClose, onSave }) {
-  const [nombre, setNombre] = useState(""); // Estado para el nombre del rol
-  const [imagen, setImagen] = useState(null); // Estado para la imagen del rol
-
-  const handleSave = () => {
-    if (nombre && imagen) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        onSave({ nombre, imagen: e.target.result });
-        onClose();
-      };
-      reader.readAsDataURL(imagen);
-    } else {
-      alert("Por favor ingrese un nombre y seleccione una imagen para el rol");
-    }
-  };
-
-  if (!show) return null; // No renderiza el modal si no está visible
-
-  return (
-    <div className="modal show d-block" tabIndex="-1" style={{ display: "block", background: "rgba(0, 0, 0, 0.5)" }}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Agregar Rol</h5>
-            <button type="button" className="btn-close" aria-label="Close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            {/* Formulario para nombre del rol */}
-            <div className="form-group">
-              <label className="form-label d-block">Nombre del Rol</label>
-              <input
-                type="text"
-                className="form-control"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ingrese el nombre del rol"
-              />
-            </div>
-            {/* Formulario para imagen del rol */}
-            <div className="form-group mt-2">
-              <label className="form-label d-block">Imagen del Rol</label>
-              <input
-                type="file"
-                className="form-control"
-                onChange={(e) => setImagen(e.target.files[0])}
-                accept="image/*"
-              />
-            </div>
-          </div>
-          <div className="modal-footer">
-            {/* Botones para cerrar o guardar */}
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Cerrar
-            </button>
-            <button type="button" className="btn btn-primary" onClick={handleSave}>
-              Guardar
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -151,35 +83,64 @@ function AgregarRolModal({ show, onClose, onSave }) {
 
 // Componente principal
 function Rol() {
-  const initialRoles = [
-    { id: 1, nombre: "Daniel Perez", rol: "Administrador", imagen: `${BASE_IMG_URL}/admin.jpg`, eliminado: false },
-    { id: 2, nombre: "Erick Peña", rol: "Administrador", imagen: `${BASE_IMG_URL}/admin.jpg`, eliminado: false },
-    { id: 3, nombre: "Omar Carvajal", rol: "Usuario", imagen: `${BASE_IMG_URL}/usuario.jpg`, eliminado: false },
-    { id: 4, nombre: "Oscar Mendoza", rol: "Usuario", imagen: `${BASE_IMG_URL}/usuario.jpg`, eliminado: false },
-  ];
-
   const [busqueda, setBusqueda] = useState("");
-  const [roles, setRoles] = useState(initialRoles);
+  const [roles, setRoles] = useState([]);
   const [rolSeleccionado, setRolSeleccionado] = useState(null);
   const [rolesSeleccionados, setRolesSeleccionados] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [nuevoRol, setNuevoRol] = useState({ nombre: "", usuario_id: "" });
+
+  // Obtener roles desde el backend
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await axios.get("http://localhost:9000/roles");
+        setRoles(response.data);
+      } catch (error) {
+        console.error("Error al obtener los roles:", error.message);
+      }
+    };
+
+    fetchRoles();
+  }, []);
 
   const rolesFiltrados = roles.filter((rol) =>
     rol.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const handleEliminarRolesSeleccionados = () => {
-    setRoles((prevRoles) => {
-      const rolesActualizados = prevRoles.map((rol) =>
-        rolesSeleccionados.includes(rol.id) ? { ...rol, eliminado: true } : rol
-      );
+  const handleEliminarRolesSeleccionados = async () => {
+    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
 
-      return [
-        ...rolesActualizados.filter((rol) => !rol.eliminado),
-        ...rolesActualizados.filter((rol) => rol.eliminado),
-      ];
-    });
-    setRolesSeleccionados([]);
+    try {
+      for (const id of rolesSeleccionados) {
+        await axios.delete(`http://localhost:9000/roles/${id}`, {
+          headers: {
+            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+          },
+          withCredentials: true, // Asegúrate de enviar las cookies
+        });
+      }
+      setRoles((prevRoles) =>
+        prevRoles.filter((rol) => !rolesSeleccionados.includes(rol.id))
+      );
+      setRolesSeleccionados([]);
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Roles eliminados!",
+        text: "Los roles seleccionados han sido eliminados correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al eliminar roles:", error.message);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error al eliminar",
+        text: "Hubo un error al eliminar los roles. Por favor, inténtelo de nuevo.",
+      });
+    }
   };
 
   const handleSelectRol = (id) => {
@@ -190,51 +151,85 @@ function Rol() {
     );
   };
 
-  const handleAgregarRol = (nuevoRol) => {
-    setRoles((prevRoles) => {
-      // Encuentra el índice del primer rol eliminado
-      const indexEliminado = prevRoles.findIndex((rol) => rol.eliminado);
-
-      // Crea un nuevo rol con un ID único
-      const nuevoRolConId = { ...nuevoRol, id: prevRoles.length + 1, eliminado: false };
-
-      if (indexEliminado === -1) {
-        // Si no hay roles eliminados, agrega al final
-        return [...prevRoles, nuevoRolConId];
-      } else {
-        // Inserta el nuevo rol antes del primer eliminado
-        return [
-          ...prevRoles.slice(0, indexEliminado),
-          nuevoRolConId,
-          ...prevRoles.slice(indexEliminado),
-        ];
-      }
-    });
-  };
-
   const handleAbrirModal = (rol) => {
-    setRolSeleccionado({ ...rol });
+    setRolSeleccionado(rol);
   };
 
   const handleCerrarModal = () => {
     setRolSeleccionado(null);
   };
 
-  const handleGuardarRol = (rolEditado) => {
-    setRoles((prevRoles) =>
-      prevRoles.map((rol) => (rol.id === rolEditado.id ? { ...rolEditado } : rol))
-    );
-    setRolSeleccionado(null);
+const handleGuardarRol = async (rolEditado) => {
+  // Guardar copia del estado original por si falla
+  const rolOriginal = roles.find(r => r.id === rolEditado.id);
+  
+  // 1. Actualización optimista (UI primero)
+  setRoles(prev => prev.map(r => r.id === rolEditado.id ? rolEditado : r));
+  setRolSeleccionado(null);
+
+  try {
+    // 2. Llamada al backend (en segundo plano)
+    await axios.put(`http://localhost:9000/roles/${rolEditado.id}`, rolEditado, {
+      headers: { "CSRF-Token": localStorage.getItem("csrfToken") },
+      withCredentials: true
+    });
+
+    // 3. (Opcional) Verificación con el backend
+    const { data } = await axios.get(`http://localhost:9000/roles/${rolEditado.id}`);
+    setRoles(prev => prev.map(r => r.id === data.id ? data : r));
+
+  } catch (error) {
+    console.error("Error:", error);
+    // Revertir si hay error
+    setRoles(prev => prev.map(r => r.id === rolOriginal.id ? rolOriginal : r));
+    Swal.fire("Error", "No se pudo guardar", "error");
+  }
+};
+
+  const handleAgregarRol = async () => {
+    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
+
+    try {
+      const response = await axios.post(
+        "http://localhost:9000/roles",
+        nuevoRol,
+        {
+          headers: {
+            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+          },
+          withCredentials: true, // Asegúrate de enviar las cookies
+        }
+      );
+      setRoles((prevRoles) => [response.data, ...prevRoles]);
+      setNuevoRol({ nombre: "", usuario_id: "" });
+      setMostrarFormulario(false);
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Rol agregado!",
+        text: "El rol se ha agregado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al agregar el rol:", error.message);
+
+      Swal.fire({
+        icon: "error",
+        title: "Error al agregar",
+        text: "Hubo un error al agregar el rol. Por favor, inténtelo de nuevo.",
+      });
+    }
   };
 
   return (
     <div>
       <h1 className="page-header">
-        Gestión de Roles <small>administración de roles </small>
+        Gestión de Roles <small>administración de roles</small>
       </h1>
       <Panel>
         <PanelHeader>
-          <h4 className="panel-title"> Gestión de Roles</h4>
+          <h4 className="panel-title">Gestión de Roles</h4>
         </PanelHeader>
         <PanelBody>
           <div className="row mb-3">
@@ -248,8 +243,11 @@ function Rol() {
                 >
                   <i className="bi bi-trash"></i> Eliminar
                 </button>
-                <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => setModalVisible(true)}>
-                  <i className="bi bi-plus-circle"></i> Agregar
+                <button
+                  className="btn btn-primary"
+                  onClick={() => setMostrarFormulario(true)}
+                >
+                  <i className="bi bi-plus-circle"></i> Agregar Rol
                 </button>
               </div>
             </div>
@@ -277,11 +275,64 @@ function Rol() {
         />
       )}
 
-      <AgregarRolModal
-        show={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleAgregarRol}
-      />
+      {mostrarFormulario && (
+        <div
+          className="modal"
+          style={{
+            display: "block",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+          }}
+        >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Agregar Rol</h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  onClick={() => setMostrarFormulario(false)}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label className="form-label">Nombre del Rol</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={nuevoRol.nombre}
+                    onChange={(e) => setNuevoRol({ ...nuevoRol, nombre: e.target.value })}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">ID del Usuario</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={nuevoRol.usuario_id}
+                    onChange={(e) => setNuevoRol({ ...nuevoRol, usuario_id: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setMostrarFormulario(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAgregarRol}
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

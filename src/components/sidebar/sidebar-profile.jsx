@@ -1,97 +1,109 @@
-import React, { useContext } from 'react';
-import { Link } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
-import { AppSettings } from './../../config/app-settings.js';
-import { slideToggle } from './../../composables/slideToggle.js';
+import React, { useContext } from "react";
+import { LogOut } from "lucide-react";
+import { AppSettings } from "../../config/app-settings.js";
+import { slideToggle } from "../../composables/slideToggle.js";
+import { logout } from "../../config/auth";
+import { useNavigate } from "react-router-dom"; // Para redirigir al login
 
 function SidebarProfile() {
-	const context = useContext(AppSettings);
+  const context = useContext(AppSettings);
+  const navigate = useNavigate(); // Inicializa navigate
 
-	function handleProfileExpand(e) {
-		e.preventDefault();
+  function handleProfileExpand(e) {
+    e.preventDefault();
 
-		var targetSidebar = document.querySelector('.app-sidebar:not(.app-sidebar-end)');
-		var targetMenu = e.target.closest('.menu-profile');
-		var targetProfile = document.querySelector('#appSidebarProfileMenu');
-		var expandTime = (targetSidebar && targetSidebar.getAttribute('data-disable-slide-animation')) ? 0 : 250;
+    var targetSidebar = document.querySelector(".app-sidebar:not(.app-sidebar-end)");
+    var targetMenu = e.target.closest(".menu-profile");
+    var targetProfile = document.querySelector("#appSidebarProfileMenu");
+    var expandTime = targetSidebar && targetSidebar.getAttribute("data-disable-slide-animation") ? 0 : 250;
 
-		if (targetProfile) {
-			if (targetProfile.style.display === 'block') {
-				targetMenu.classList.remove('active');
-			} else {
-				targetMenu.classList.add('active');
-			}
-			slideToggle(targetProfile, expandTime);
-			targetProfile.classList.toggle('expand');
-		}
-	}
+    if (targetProfile) {
+      if (targetProfile.style.display === "block") {
+        targetMenu.classList.remove("active");
+      } else {
+        targetMenu.classList.add("active");
+      }
+      slideToggle(targetProfile, expandTime);
+      targetProfile.classList.toggle("expand");
+    }
+  }
 
-	function handleDarkMode(e) {
-		context.handleSetAppDarkMode(e.target.checked);
-	}
+  function handleDarkMode(e) {
+    context.handleSetAppDarkMode(e.target.checked);
+  }
 
-	return (
-		<AppSettings.Consumer>
-			{({ appSidebarMinify, appDarkMode }) => (
-				<div className="menu">
-					<div className="menu-profile">
-						<Link to="/" onClick={handleProfileExpand} className="menu-profile-link">
-							<div className="menu-profile-cover with-shadow"></div>
-							<div className="menu-profile-image menu-profile-image-icon bg-gray-900 text-gray-600">
-								<i className="fa fa-user"></i>
-							</div>
-							<div className="menu-profile-info">
-								<div className="d-flex align-items-center">
-									<div className="flex-grow-1">
-										Juan Perez
-									</div>
-									<div className="menu-caret ms-auto"></div>
-								</div>
-								<small>Administrador</small>
-							</div>
-						</Link>
-					</div>
-					<div id="appSidebarProfileMenu" className="collapse">
-						<div className="menu-item">
-							<Link to="/perfil" className="menu-link">
-								<div className="menu-icon"><i className="fa fa-user"></i></div>
-								<div className="menu-text">Perfil</div>
-							</Link>
-						</div>
+  function handleLogout() {
+    logout(navigate); // Llama a la función logout y redirige al login
+  }
 
-						<div className="menu-item pt-5px">
-							<div className="menu-link">
-								<div className="menu-icon"><i className="fa fa-moon"></i></div>
-								<div className="menu-text">Modo Oscuro</div>
-								<div className="form-check form-switch ms-auto">
-									<input
-										type="checkbox"
-										className="form-check-input"
-										name="app-theme-dark-mode"
-										onChange={handleDarkMode}
-										id="sidebarDarkMode"
-										checked={appDarkMode}
-										value="1"
-									/>
-								</div>
-							</div>
-						</div>
+  return (
+    <AppSettings.Consumer>
+      {({ appSidebarMinify, appDarkMode }) => (
+        <div className="menu">
+          <div className="menu-profile">
+            <a href="/" onClick={handleProfileExpand} className="menu-profile-link">
+              <div className="menu-profile-cover with-shadow"></div>
+              <div className="menu-profile-image menu-profile-image-icon bg-gray-900 text-gray-600">
+                <i className="fa fa-user"></i>
+              </div>
+              <div className="menu-profile-info">
+                <div className="d-flex align-items-center">
+                  <div className="flex-grow-1">Moderador</div>
+                  <div className="menu-caret ms-auto"></div>
+                </div>
+                <small></small>
+              </div>
+            </a>
+          </div>
+          <div id="appSidebarProfileMenu" className="collapse">
+            <div className="menu-item">
+              <a href="/perfil" className="menu-link">
+                <div className="menu-icon">
+                  <i className="fa fa-user"></i>
+                </div>
+                <div className="menu-text">Perfil</div>
+              </a>
+            </div>
 
-						<div className="menu-divider m-0"></div>
+            <div className="menu-item pt-5px">
+              <div className="menu-link">
+                <div className="menu-icon">
+                  <i className="fa fa-moon"></i>
+                </div>
+                <div className="menu-text">Modo Oscuro</div>
+                <div className="form-check form-switch ms-auto">
+                  <input
+                    type="checkbox"
+                    className="form-check-input"
+                    name="app-theme-dark-mode"
+                    onChange={handleDarkMode}
+                    id="sidebarDarkMode"
+                    checked={appDarkMode}
+                    value="1"
+                  />
+                </div>
+              </div>
+            </div>
 
-						<div className="menu-item pt-5px">
-							<Link to="/login" className="menu-link">
-								<div className="menu-icon">
-									<LogOut size={18} aria-hidden="true" />
-								</div>
-								<div className="menu-text">Cerrar Sesión</div>
-							</Link>
-						</div>
-					</div>
-				</div>
-			)}
-		</AppSettings.Consumer>
-	);
+            <div className="menu-divider m-0"></div>
+
+            <div className="menu-item pt-5px">
+              <button
+                type="button"
+                className="menu-link border-0 bg-transparent"
+                onClick={handleLogout} // Llama a la función handleLogout
+              >
+                <div className="menu-icon">
+                  <LogOut size={18} aria-hidden="true" />
+                </div>
+                <div className="menu-text">Cerrar Sesión</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </AppSettings.Consumer>
+  );
 }
 
 export default SidebarProfile;

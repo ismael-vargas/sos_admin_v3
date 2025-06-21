@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import App from './../app.jsx';
 import Dashboard from './../pages/dashboard/dashboard.jsx';
 import Error from './../pages/error/error.jsx';
@@ -18,6 +18,8 @@ import Notificaciones from '../pages/notificaciones/notificaciones.jsx'
 import Dispositivos from '../pages/dispositivos/dispositivos.jsx';
 import Perfil from '../pages/perfil/perfil.jsx';
 import Estadisticas from '../pages/estadisticas/estadisticas.jsx'; 
+import { Navigate } from 'react-router-dom';
+import { isAuthenticated } from '../config/auth'; // Ruta correcta
 
 
 
@@ -26,7 +28,8 @@ const AppRoute = [
     path: '*',
     element: <App />,
     children: [
-      { path: '', element: <Dashboard /> },
+      { path: '', element: <Navigate to="/login" /> }, // Redirige desde la raíz a /login
+      { path: 'dashboard', element: isAuthenticated() ? <Dashboard /> : <Navigate to="/login" /> }, // Ruta explícita para /dashboard
       { path: 'gestion-usuarios', element: <Usuarios /> },
       { path: 'gestion-clientes', element: <GestionClientes /> },
       { path: 'informacion-contacto-usuarios', element: <InformacionContactosUsuarios /> },
@@ -47,7 +50,7 @@ const AppRoute = [
   // Ruta específica para el Login, sin el layout principal
   {
     path: '/login',
-    element: <Login />,
+    element: <Login />, // Ruta inicial apunta al Login
   },
   {
     path: '/registro',
@@ -55,4 +58,11 @@ const AppRoute = [
   }
 ];
 
+export const logout = (navigate) => {
+  localStorage.removeItem("usuario_id"); // Elimina el estado de autenticación
+  navigate("/login"); // Redirige al login
+};
+
 export default AppRoute;
+
+console.log("Estado de autenticación en Dashboard:", isAuthenticated());

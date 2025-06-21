@@ -1,30 +1,37 @@
 /* perfil.jsx */
 /* -------------------*/
-import React, { useState } from 'react'; // Importa React y el hook useState para manejar estados.
+import React, { useState, useEffect } from 'react'; // Importa React y los hooks useState y useEffect para manejar estados y efectos secundarios.
 import { Link } from "react-router-dom"; // Importa Link para la navegación entre rutas.
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx"; // Importa componentes personalizados para el panel.
 import { User, Mail, MapPin, Camera, Edit2, Save, X } from 'lucide-react'; // Importa iconos de lucide-react para usarlos en la interfaz.
+import axios from 'axios'; // Importa axios para realizar solicitudes HTTP.
+import Swal from 'sweetalert2'; // Importa SweetAlert2 para mostrar alertas estilizadas.
 import "../../assets/scss/perfil.scss"; // Importa el archivo de estilos SCSS para este componente.
 
 const Perfil = () => {
   // Estado para controlar si se está editando el perfil o no.
   const [isEditing, setIsEditing] = useState(false);
-
-  // Estado inicial del perfil del usuario.
-  const [profile, setProfile] = useState({
-    nombre: 'Juan Pérez',
-    cedula: '12345678',
-    telefono: '04141234567',
-    email: 'juan@gmail.com',
-    direccion: 'Calle Principal #123',
-    password: '', // No se muestra, solo para edición
-    avatar: null
-  });
-
+  // Estado para el perfil del usuario
+  const [profile, setProfile] = useState(null);
   // Estado temporal para manejar los datos del formulario de edición.
-  const [tempProfile, setTempProfile] = useState(profile);
+  const [tempProfile, setTempProfile] = useState(null);
 
-  // Maneja los cambios en los campos del formulario.
+  // Obtener los datos del usuario que ha iniciado sesión
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get("http://localhost:9000/usuarios/1", { withCredentials: true }); // Ajusta el ID según el usuario iniciado
+        setProfile(response.data);
+        setTempProfile(response.data);
+      } catch (error) {
+        console.error("Error al obtener el perfil:", error.message);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  // Maneja los cambios en los campos del formulario
   const handleInputChange = (e) => {
     const { name, value } = e.target; // Obtiene el nombre y valor del campo modificado.
     setTempProfile((prev) => ({
@@ -33,36 +40,55 @@ const Perfil = () => {
     }));
   };
 
-  // Guarda los cambios al enviar el formulario.
-  const handleSubmit = (e) => {
+  // Guarda los cambios al enviar el formulario
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Solo actualiza la contraseña si el usuario escribió algo
-    const updatedProfile = { ...tempProfile };
-    if (!tempProfile.password) {
-      delete updatedProfile.password;
+    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
+
+    try {
+      const response = await axios.put(
+        `http://localhost:9000/usuarios/${profile.id}`,
+        tempProfile,
+        {
+          headers: {
+            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+          },
+          withCredentials: true, // Asegúrate de enviar las cookies
+        }
+      );
+
+      setProfile(response.data); // Actualizar el estado con los datos actualizados
+      setIsEditing(false);
+
+      // Mostrar alerta de éxito
+      Swal.fire({
+        icon: "success",
+        title: "¡Cambios actualizados!",
+        text: "El perfil se ha actualizado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al actualizar el perfil:", error.message);
+
+      // Mostrar alerta de error
+      Swal.fire({
+        icon: "error",
+        title: "Error al actualizar",
+        text: "Hubo un error al actualizar el perfil. Por favor, inténtelo de nuevo.",
+      });
     }
-    setProfile((prev) => ({
-      ...prev,
-      ...updatedProfile,
-      // Si no se cambió la contraseña, mantenla igual
-      password: prev.password
-    }));
-    setTempProfile((prev) => ({
-      ...prev,
-      password: ''
-    }));
-    setIsEditing(false);
   };
 
-  // Cancela la edición y restaura los datos originales.
+  // Cancela la edición y restaura los datos originales
   const handleCancel = () => {
     setTempProfile(profile); // Restaura los datos del perfil original.
     setIsEditing(false); // Sal del modo de edición.
   };
 
-  // Renderiza la imagen o un placeholder si no hay una imagen de perfil.
+  // Renderiza la imagen o un placeholder si no hay una imagen de perfil
   const renderProfileImage = () => {
-    if (profile.avatar) { // Si hay una imagen de perfil.
+    if (profile?.avatar) {
       return (
         <img
           src={profile.avatar} // Muestra la imagen de perfil.
@@ -70,7 +96,7 @@ const Perfil = () => {
           className="rounded-circle shadow profile-image" // Clases para estilos.
         />
       );
-    } else { // Si no hay imagen de perfil.
+    } else {
       return (
         <div className="rounded-circle shadow profile-placeholder d-flex align-items-center justify-content-center">
           <i className="fa fa-user fa-4x text-white"></i> {/* Ícono de usuario. */}
@@ -127,9 +153,9 @@ const Perfil = () => {
                       )}
                     </div>
                     <h3 className="text-white mt-3">
-                      {profile.nombre} {profile.apellido} {/* Nombre completo del usuario. */}
+                      {profile?.nombre} {/* Nombre completo del usuario. */}
                     </h3>
-                    <p className="text-white-50">ID: {profile.cedula}</p> {/* Cédula del usuario. */}
+                    <p className="text-white-50">ID: {profile?.cedula_identidad}</p> {/* Cédula del usuario. */}
                   </div>
 
                   <div className="card-body"> {/* Cuerpo de la tarjeta. */}
@@ -144,7 +170,7 @@ const Perfil = () => {
                                 type="text"
                                 className="form-control"
                                 name="nombre"
-                                value={tempProfile.nombre}
+                                value={tempProfile?.nombre || ''}
                                 onChange={handleInputChange}
                                 required
                               />
@@ -156,21 +182,8 @@ const Perfil = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                name="cedula"
-                                value={tempProfile.cedula}
-                                onChange={handleInputChange}
-                                required
-                              />
-                            </div>
-                          </div>
-                          <div className="col-md-6"> {/* Campo para el teléfono. */}
-                            <div className="form-group">
-                              <label>Teléfono *</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                name="telefono"
-                                value={tempProfile.telefono || ''}
+                                name="cedula_identidad"
+                                value={tempProfile?.cedula_identidad || ''}
                                 onChange={handleInputChange}
                                 required
                               />
@@ -182,8 +195,8 @@ const Perfil = () => {
                               <input
                                 type="email"
                                 className="form-control"
-                                name="email"
-                                value={tempProfile.email}
+                                name="correo_electronico"
+                                value={tempProfile?.correo_electronico || ''}
                                 onChange={handleInputChange}
                                 required
                               />
@@ -196,23 +209,21 @@ const Perfil = () => {
                                 type="text"
                                 className="form-control"
                                 name="direccion"
-                                value={tempProfile.direccion}
+                                value={tempProfile?.direccion || ''}
                                 onChange={handleInputChange}
                                 required
                               />
                             </div>
                           </div>
-                          {/* Nueva contraseña (opcional) */}
-                          <div className="col-12">
+                          <div className="col-md-6"> {/* Campo para cambiar la contraseña. */}
                             <div className="form-group">
-                              <label>Nueva contraseña</label>
+                              <label>Nueva Contraseña</label>
                               <input
                                 type="password"
                                 className="form-control"
-                                name="password"
-                                value={tempProfile.password || ''}
-                                onChange={handleInputChange}
-                                placeholder="Dejar en blanco para no cambiar"
+                                name="contrasena" // Nombre del campo que se enviará al backend
+                                value={tempProfile?.contrasena || ''} // Valor temporal para la contraseña
+                                onChange={handleInputChange} // Maneja los cambios en el campo
                               />
                             </div>
                           </div>
@@ -240,33 +251,23 @@ const Perfil = () => {
                           {
                             icon: User,
                             label: "Nombres",
-                            value: profile.nombre
+                            value: profile?.nombre
                           },
                           {
                             icon: User,
                             label: "Cédula",
-                            value: profile.cedula
-                          },
-                          {
-                            icon: User,
-                            label: "Teléfono",
-                            value: profile.telefono
+                            value: profile?.cedula_identidad
                           },
                           {
                             icon: Mail,
                             label: "Correo Electrónico",
-                            value: profile.email
+                            value: profile?.correo_electronico
                           },
                           {
                             icon: MapPin,
                             label: "Dirección",
-                            value: profile.direccion
+                            value: profile?.direccion
                           },
-                          {
-                            icon: User,
-                            label: "Contraseña",
-                            value: "*****"
-                          }
                         ].map((item, index) => ( // Recorre y renderiza cada tarjeta de información.
                           <div
                             key={index}

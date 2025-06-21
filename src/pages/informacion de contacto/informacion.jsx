@@ -1,11 +1,12 @@
 /* informacion_contacto_usuario.jsx */
 /* -------------------*/
 // Importación de bibliotecas y componentes necesarios
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import InformacionModal from "./informacion_modal.jsx";
-import Pinteres from "../../assets/img/Pinteres.jpeg";
+import Swal from "sweetalert2"; // Importa SweetAlert
 import "../../assets/scss/informacion.scss";
 
 // Componente para la barra de búsqueda
@@ -33,28 +34,24 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
       <div
         className={`card border-0 shadow-sm rounded-3 overflow-hidden ${eliminado ? "opacity-50" : ""}`}
         style={{
-          transition: "transform 0.3s ease, box-shadow 0.3s ease",
+          transition: "transform 0.2s ease",
           cursor: eliminado ? "not-allowed" : "pointer",
         }}
         onMouseEnter={(e) => {
           if (!eliminado) {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.3)";
+            e.currentTarget.style.transform = "scale(1.05)"; // Efecto de zoom reducido
           }
         }}
         onMouseLeave={(e) => {
           if (!eliminado) {
             e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.boxShadow = "none";
           }
         }}
       >
         <img
-          src={informacion.imagen}
-          className="card-img-top"
+          src="/assets/img/Pinteres.jpeg" // Ruta absoluta
           alt={`Imagen de ${informacion.nombre}`}
-          style={{ objectFit: "cover", height: "200px" }}
-          loading="lazy"
+          className="card-img-top"
         />
         <div className="card-body bg-dark text-white text-center">
           <h6 className="card-title mb-1">{informacion.nombre}</h6>
@@ -89,70 +86,173 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
 
 // Componente principal
 function InformacionContactosUsuarios() {
-  const initialInformaciones = [
-    { id: 1, nombre: "Ismael Vera", numero: "123-456-789", imagen: Pinteres, eliminado: false },
-    { id: 2, nombre: "Juan Pérez", numero: "987-654-321", imagen: Pinteres, eliminado: false },
-    { id: 3, nombre: "María López", numero: "555-555-555", imagen: Pinteres, eliminado: false },
-  ];
-
   const [busqueda, setBusqueda] = useState("");
-  const [informaciones, setInformaciones] = useState(initialInformaciones);
+  const [informaciones, setInformaciones] = useState([]);
   const [informacionSeleccionada, setInformacionSeleccionada] = useState(null);
   const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoUsuario, setNuevoUsuario] = useState({ id: "", nombre: "", numero: "" });
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: "", numero: "", usuario_id: "" });
 
-  const informacionesFiltradas = informaciones.filter((informacion) =>
-    informacion.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await axios.get("http://localhost:9000/csrf-token", { withCredentials: true });
+        localStorage.setItem("csrfToken", response.data.csrfToken); // Almacenar el token CSRF
+      } catch (error) {
+        console.error("Error al obtener el token CSRF:", error.message);
+        Swal.fire({
+          icon: "error",
+          title: "Error al cargar token CSRF",
+          text: "Hubo un error al obtener el token de seguridad. Por favor, inténtelo de nuevo.",
+        });
+      }
+    };
 
-  const handleEliminarInformacion = () => {
-    const informacionesActualizadas = informaciones.map((informacion) =>
-      usuariosSeleccionados.includes(informacion.id)
-        ? { ...informacion, eliminado: true }
-        : informacion
+    fetchCsrfToken();
+  }, []);
+
+  useEffect(() => {
+    const fetchInformaciones = async () => {
+      try {
+        const response = await axios.get("http://localhost:9000/usuario-numeros", {
+          withCredentials: true,
+        });
+
+        const datos = response.data.map((item) => ({
+          id: item.id,
+          nombre: item.nombre,
+          numero: item.numero,
+          eliminado: item.estado === "eliminado",
+        }));
+
+        setInformaciones(datos);
+      } catch (error) {
+        console.error("Error al obtener la información:", error.message);
+        Swal.fire({
+          icon: "error",
+          title: "Error al cargar datos",
+          text: "Hubo un error al obtener la información. Por favor, inténtelo de nuevo.",
+        });
+      }
+    };
+
+    fetchInformaciones();
+  }, []);
+const handleEliminarInformacion = async () => {
+  const csrfToken = localStorage.getItem("csrfToken");
+
+  try {
+    // Actualizamos el estado local para eliminar las tarjetas inmediatamente
+    setInformaciones((prevInformaciones) =>
+      prevInformaciones.filter((info) => !usuariosSeleccionados.includes(info.id))
     );
 
-    // Ordena las informaciones: las eliminadas irán al final
-    const informacionesOrdenadas = informacionesActualizadas.sort((a, b) => {
-      if (a.eliminado && !b.eliminado) return 1; // 'a' va al final
-      if (!a.eliminado && b.eliminado) return -1; // 'b' va al final
-      return 0; // No cambia el orden
+    // Luego hacemos las llamadas al backend
+    for (const id of usuariosSeleccionados) {
+      await axios.put(
+        `http://localhost:9000/usuario-numero/${id}`,
+        { estado: "eliminado" },
+        {
+          headers: {
+            "CSRF-Token": csrfToken,
+          },
+          withCredentials: true,
+        }
+      );
+    }
+
+    setUsuariosSeleccionados([]);
+
+    // Mostrar alerta de eliminación exitosa
+    Swal.fire({
+      icon: "success",
+      title: "¡Eliminación exitosa!",
+      text: "Los números seleccionados han sido eliminados correctamente.",
+      timer: 1500,
+      showConfirmButton: false,
+    });
+  } catch (error) {
+    console.error("Error al eliminar la información:", error.message);
+
+    // Si hay un error, revertimos los cambios en el estado local
+    Swal.fire({
+      icon: "error",
+      title: "Error al eliminar",
+      text: "Hubo un error al eliminar la información. Por favor, inténtelo de nuevo.",
     });
 
-    setInformaciones(informacionesOrdenadas);
-    setUsuariosSeleccionados([]);
-  };
+    // Recuperamos las tarjetas eliminadas en caso de error
+    const response = await axios.get("http://localhost:9000/usuario-numeros", {
+      withCredentials: true,
+    });
+    setInformaciones(response.data);
+  }
+};
 
+  const handleGuardarNuevoUsuario = async () => {
+    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
 
-  const handleSeleccionarUsuario = (id) => {
-    setUsuariosSeleccionados((prevSeleccionados) =>
-      prevSeleccionados.includes(id)
-        ? prevSeleccionados.filter((usuarioId) => usuarioId !== id)
-        : [...prevSeleccionados, id]
-    );
-  };
+    if (!nuevoUsuario.nombre || !nuevoUsuario.numero || !nuevoUsuario.usuario_id) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campos incompletos",
+        text: "Por favor complete todos los campos antes de guardar.",
+      });
+      return;
+    }
 
-  const handleAgregarInformacion = () => {
-    setMostrarFormulario(true);
-  };
+    try {
+      const response = await axios.post(
+        "http://localhost:9000/usuario-numeros",
+        {
+          nombre: nuevoUsuario.nombre,
+          numero: nuevoUsuario.numero,
+          usuario_id: nuevoUsuario.usuario_id,
+        },
+        {
+          headers: {
+            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+          },
+          withCredentials: true, // Asegúrate de enviar las cookies
+        }
+      );
 
-  const handleGuardarNuevoUsuario = () => {
-    if (nuevoUsuario.nombre && nuevoUsuario.numero) {
       setInformaciones((prevInformaciones) => [
-        { id: prevInformaciones.length + 1, ...nuevoUsuario, eliminado: false, imagen: Pinteres },
+        {
+          id: response.data.usuarioNumero.id,
+          nombre: nuevoUsuario.nombre,
+          numero: nuevoUsuario.numero,
+          eliminado: false,
+        },
         ...prevInformaciones,
       ]);
-      setNuevoUsuario({ id: "", nombre: "", numero: "" });
+
+      setNuevoUsuario({ nombre: "", numero: "", usuario_id: "" });
       setMostrarFormulario(false);
-    } else {
-      alert("Por favor complete todos los campos.");
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Número agregado!",
+        text: "El número ha sido agregado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al guardar el nuevo usuario:", error.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error al guardar",
+        text: "Hubo un error al guardar el usuario. Por favor, inténtelo de nuevo.",
+      });
     }
   };
 
+  const usuariosFiltrados = informaciones.filter((info) =>
+    info.nombre?.toLowerCase().includes(busqueda.toLowerCase())
+  );
+
   return (
     <div>
-
       <h1 className="page-header">
         Información de Contacto Usuario <small>administración</small>
       </h1>
@@ -176,7 +276,7 @@ function InformacionContactosUsuarios() {
               </button>
               <button
                 className="btn btn-primary d-flex align-items-center gap-2"
-                onClick={handleAgregarInformacion}
+                onClick={() => setMostrarFormulario(true)}
               >
                 <i className="bi bi-plus-circle"></i>Agregar
               </button>
@@ -184,13 +284,19 @@ function InformacionContactosUsuarios() {
           </div>
 
           <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-            {informacionesFiltradas.map((informacion) => (
+            {usuariosFiltrados.map((informacion) => (
               <InformacionCard
                 key={informacion.id}
                 informacion={informacion}
                 onFlechaClick={setInformacionSeleccionada}
                 seleccionado={usuariosSeleccionados.includes(informacion.id)}
-                onSelect={handleSeleccionarUsuario}
+                onSelect={(id) =>
+                  setUsuariosSeleccionados((prevSeleccionados) =>
+                    prevSeleccionados.includes(id)
+                      ? prevSeleccionados.filter((usuarioId) => usuarioId !== id)
+                      : [...prevSeleccionados, id]
+                  )
+                }
                 eliminado={informacion.eliminado}
               />
             ))}
@@ -202,6 +308,7 @@ function InformacionContactosUsuarios() {
         <InformacionModal
           informacion={informacionSeleccionada}
           onClose={() => setInformacionSeleccionada(null)}
+          setInformaciones={setInformaciones} // Pasar setInformaciones al modal
         />
       )}
 
@@ -213,21 +320,8 @@ function InformacionContactosUsuarios() {
             backgroundColor: "rgba(0, 0, 0, 0.5)",
           }}
         >
-          <div
-            className="modal-dialog modal-dialog-centered" // Esto centra el modal
-            style={{
-              zIndex: 1050,
-              maxWidth: "500px", // Máximo tamaño
-              width: "100%", // Siempre ocupa el 100% del ancho
-            }}
-          >
-            <div
-              className="modal-content"
-              style={{
-                border: "none", // Sin bordes
-                borderRadius: "0", // Sin bordes redondeados
-              }}
-            >
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Agregar Usuario</h5>
                 <button
@@ -243,9 +337,7 @@ function InformacionContactosUsuarios() {
                     type="text"
                     className="form-control"
                     value={nuevoUsuario.nombre}
-                    onChange={(e) =>
-                      setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })
-                    }
+                    onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })}
                   />
                 </div>
                 <div className="mb-3">
@@ -254,9 +346,16 @@ function InformacionContactosUsuarios() {
                     type="text"
                     className="form-control"
                     value={nuevoUsuario.numero}
-                    onChange={(e) =>
-                      setNuevoUsuario({ ...nuevoUsuario, numero: e.target.value })
-                    }
+                    onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, numero: e.target.value })}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label className="form-label">Usuario ID</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={nuevoUsuario.usuario_id}
+                    onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, usuario_id: e.target.value })}
                   />
                 </div>
               </div>
@@ -279,7 +378,6 @@ function InformacionContactosUsuarios() {
             </div>
           </div>
         </div>
-
       )}
     </div>
   );

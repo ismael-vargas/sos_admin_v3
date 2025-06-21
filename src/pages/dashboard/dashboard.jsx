@@ -1,11 +1,12 @@
 /* dashboard.jsx */
 /* -------------------*/
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Panel, PanelHeader, PanelBody } from './../../components/panel/panel.jsx';
 import { Edit2, Save, Smartphone, Monitor, Upload } from 'lucide-react';
 import fondoCelular from '../../assets/img/87.jpg'; // Cambia el nombre por el real
 import '../../assets/scss/dashboard.scss';
-
+import { useNavigate } from "react-router-dom";
+import { isAuthenticated } from "../../config/auth";
 
 // Componente de texto editable
 const EditableText = ({ text, onSave, editing, style = {}, className = '' }) => {
@@ -504,6 +505,13 @@ Nuestra comunidad trabaja unida para crear un entorno más seguro para todos. Ú
     });
     const [sosText, setSosText] = useState('SOS');
     const [callText, setCallText] = useState('911');
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (!isAuthenticated()) {
+            navigate("/login"); // Redirige al login si no está autenticado
+        }
+    }, [navigate]);
 
     const handleDesignChange = (property, value) => {
         setAppDesign(prev => ({
@@ -603,4 +611,3 @@ Nuestra comunidad trabaja unida para crear un entorno más seguro para todos. Ú
 };
 
 export default Dashboard;
- 

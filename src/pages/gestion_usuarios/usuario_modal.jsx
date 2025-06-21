@@ -15,7 +15,7 @@ const mapEstadoFrontToBack = (estadoFront) =>
   estadoFront === "Inactivo" ? "eliminado" : "activo";
 
 // Componente del modal
-function UsuarioModal({ usuario, onClose }) {
+function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
   const [estado, setEstado] = useState(mapEstadoBackToFront(usuario.estado || "activo"));
   const [editandoEstado, setEditandoEstado] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
@@ -33,7 +33,7 @@ function UsuarioModal({ usuario, onClose }) {
 
   // Guardar el estado en el backend
   const guardarEstado = async () => {
-    const estadoParaBackend = mapEstadoFrontToBack(estado); // "activo" o "eliminado"
+    const estadoParaBackend = mapEstadoFrontToBack(estado);
 
     try {
       await axios.put(
@@ -47,7 +47,6 @@ function UsuarioModal({ usuario, onClose }) {
         }
       );
 
-      // Mostrar SweetAlert dependiendo del estado
       if (estadoParaBackend === "eliminado") {
         Swal.fire({
           icon: "info",
@@ -64,7 +63,13 @@ function UsuarioModal({ usuario, onClose }) {
         });
       }
 
-      setEditandoEstado(false); // Salir del modo edición
+      // Actualizamos el estado en tiempo real
+      if (onEstadoActualizado) {
+        onEstadoActualizado(usuario.id, estadoParaBackend);
+      }
+
+      setEditandoEstado(false);
+      onClose();
     } catch (error) {
       console.error("Error al actualizar el estado:", error);
       Swal.fire({
@@ -188,6 +193,7 @@ UsuarioModal.propTypes = {
     imagen: PropTypes.string,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
+  onEstadoActualizado: PropTypes.func.isRequired, // Nueva prop
 };
 
 export default UsuarioModal;

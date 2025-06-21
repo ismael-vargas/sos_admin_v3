@@ -3,6 +3,7 @@ import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx"
 import { Search, Trash } from "lucide-react";
 import UsuarioModal from "./usuario_modal.jsx";
 import "../../assets/scss/gestion_usuarios.scss";
+import Swal from "sweetalert2";
 
 const BASE_IMG_URL = "/assets/img/";
 const DEFAULT_IMG = "foto3.jpg";
@@ -12,20 +13,16 @@ function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelect
         <div
             className={`col ${isEliminado ? "bg-light text-danger" : ""}`}
             style={{
-                transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                opacity: isEliminado ? 0.5 : 1,
+                transition: "transform 0.2s ease", // Suaviza el efecto de zoom
+                opacity: isEliminado ? 0.5 : 1, // Reducimos opacidad para usuarios eliminados
             }}
             onMouseEnter={(e) => {
                 if (!isEliminado) {
-                    e.currentTarget.style.transform = "scale(1.05)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
+                    e.currentTarget.style.transform = "scale(1.05)"; // Efecto de zoom reducido
                 }
             }}
             onMouseLeave={(e) => {
-                if (!isEliminado) {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.1)";
-                }
+                e.currentTarget.style.transform = "scale(1)"; // Vuelve al tamaño original
             }}
         >
             <div className="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -48,7 +45,7 @@ function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelect
                             className="form-check-input"
                             checked={isSelected}
                             onChange={() => onSelectUsuario(usuario.id)}
-                            disabled={isEliminado}
+                            disabled={isEliminado} // Deshabilitamos selección para usuarios eliminados
                         />
                     </div>
                 </div>
@@ -66,37 +63,74 @@ function GestionUsuarios() {
     const usuariosPorPagina = 8;
 
     useEffect(() => {
-        fetch("http://localhost:9000/usuarios")
-            .then((res) => res.json())
-            .then((data) => setUsuarios(data))
-            .catch((err) => console.error("Error al obtener usuarios:", err));
+        const fetchUsuarios = async () => {
+            try {
+                const csrfToken = localStorage.getItem("csrfToken");
+                const response = await fetch("http://localhost:9000/usuarios", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "CSRF-Token": csrfToken,
+                    },
+                    credentials: "include",
+                });
+
+                if (!response.ok) {
+                    throw new Error("Error al cargar usuarios");
+                }
+
+                const data = await response.json();
+                setUsuarios(data); // Cargar todos los usuarios, incluidos los eliminados
+            } catch (error) {
+                console.error("Error al cargar usuarios:", error);
+            }
+        };
+
+        fetchUsuarios();
     }, []);
 
-const eliminarUsuario = async (id) => {
-  try {
-    const csrfToken = localStorage.getItem('csrfToken'); // 🔐 asegúrate que este sea el mismo que el backend generó
+    useEffect(() => {
+        fetch("http://localhost:9000/csrf-token", { credentials: "include" })
+            .then((res) => res.json())
+            .then((data) => localStorage.setItem("csrfToken", data.csrfToken))
+            .catch((err) => console.error("Error al obtener CSRF token:", err));
+    }, []);
 
-    const response = await fetch(`http://localhost:9000/usuarios/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'CSRF-Token': csrfToken // 🔥 clave: debe coincidir con el nombre exacto
-      },
-      credentials: 'include', // 🔐 permite que se envíe la cookie connect.sid
-    });
+    const eliminarUsuario = async (id) => {
+        try {
+            const csrfToken = localStorage.getItem("csrfToken");
 
-    const result = await response.text(); // Esto captura cualquier error HTML
-    console.log('Detalles del error:', result);
+            const response = await fetch(`http://localhost:9000/usuarios/${id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "CSRF-Token": csrfToken,
+                },
+                credentials: "include",
+                body: JSON.stringify({ estado: "eliminado" }),
+            });
 
-    if (!response.ok) {
-      throw new Error('Error al eliminar usuario');
-    }
-  } catch (error) {
-    console.error(error);
-  }
-};
+            if (!response.ok) {
+                throw new Error("Error al eliminar usuario");
+            }
 
+            Swal.fire({
+                icon: "info",
+                title: "Usuario Eliminado",
+                text: "El usuario ha sido marcado como inactivo.",
+                confirmButtonText: "OK",
+            });
 
+            actualizarEstadoUsuario(id, "eliminado"); // Actualizamos el estado en tiempo real
+        } catch (error) {
+            console.error(error);
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Hubo un error al eliminar el usuario.",
+            });
+        }
+    };
 
     const handleEliminarUsuarios = () => {
         usuariosSeleccionados.forEach((id) => eliminarUsuario(id));
@@ -104,7 +138,15 @@ const eliminarUsuario = async (id) => {
     };
 
     const handleEstadoDesdeModal = (id, nuevoEstado) => {
-        if (nuevoEstado === "eliminado") eliminarUsuario(id);
+        actualizarEstadoUsuario(id, nuevoEstado);
+    };
+
+    const actualizarEstadoUsuario = (id, nuevoEstado) => {
+        setUsuarios((prevUsuarios) =>
+            prevUsuarios.map((u) =>
+                u.id === id ? { ...u, estado: nuevoEstado } : u
+            )
+        );
     };
 
     const handleSeleccionarUsuario = (id) => {
@@ -210,7 +252,7 @@ const eliminarUsuario = async (id) => {
                 <UsuarioModal
                     usuario={usuarioSeleccionado}
                     onClose={() => setUsuarioSeleccionado(null)}
-                    onEstadoChange={handleEstadoDesdeModal}
+                    onEstadoActualizado={handleEstadoDesdeModal} // Pasamos la función correctamente
                 />
             )}
         </div>

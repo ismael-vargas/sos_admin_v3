@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from './config/app-settings.js';
 import { slideToggle } from './composables/slideToggle.js';
+import { isAuthenticated } from './config/auth'; // Ruta correcta
+import { useNavigate } from 'react-router-dom'; // Asegúrate de importar useNavigate
 
 import Header from './components/header/header.jsx';
 import Sidebar from './components/sidebar/sidebar.jsx';
@@ -35,7 +37,8 @@ function App() {
 	const [appSidebarEnd, setAppSidebarEnd] = useState(false);
 	const [appSidebarEndToggled, setAppSidebarEndToggled] = useState(false);
 	const [appSidebarEndMobileToggled, setAppSidebarEndMobileToggled] = useState(false);
-  
+	const navigate = useNavigate(); // Inicializa useNavigate
+
   const handleSetAppHeaderNone = (value) => {
 		setAppHeaderNone(value);
 	};
@@ -234,6 +237,12 @@ function App() {
 			window.removeEventListener('scroll', handleScroll);
 		};
 	}, [appTheme, appDarkMode]);
+
+	useEffect(() => {
+		if (!isAuthenticated()) {
+			navigate('/login'); // Redirige al login si no está autenticado
+		}
+	}, [navigate]);
 
 	return (
 		<AppSettings.Provider
