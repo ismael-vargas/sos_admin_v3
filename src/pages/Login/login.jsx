@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../../assets/scss/login.scss";
-import instance from "../../api/axios";
 import Swal from "sweetalert2";
+import instance from "../../api/axios"; // Asegúrate de usar esta instancia
 
 const BASE_IMG_URL = "./assets/img";
 
@@ -30,14 +30,13 @@ const Login = () => {
     fetchCsrfToken();
   }, []);
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       const response = await instance.post(
         "/login",
         {
-          correo_electronico: email,
+          correo_electronico: email, // Será cifrado automáticamente
           contrasena: password,
         },
         {

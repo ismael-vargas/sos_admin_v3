@@ -114,7 +114,7 @@ function InformacionContactosUsuarios() {
   useEffect(() => {
     const fetchInformaciones = async () => {
       try {
-        const response = await axios.get("http://localhost:9000/usuario-numeros", {
+        const response = await axios.get("http://localhost:9000/usuarios_numeros", {
           withCredentials: true,
         });
 
@@ -150,7 +150,7 @@ const handleEliminarInformacion = async () => {
     // Luego hacemos las llamadas al backend
     for (const id of usuariosSeleccionados) {
       await axios.put(
-        `http://localhost:9000/usuario-numero/${id}`,
+        `http://localhost:9000/usuarios_numeros/${id}`,
         { estado: "eliminado" },
         {
           headers: {
@@ -182,7 +182,7 @@ const handleEliminarInformacion = async () => {
     });
 
     // Recuperamos las tarjetas eliminadas en caso de error
-    const response = await axios.get("http://localhost:9000/usuario-numeros", {
+    const response = await axios.get("http://localhost:9000/usuarios_numeros", {
       withCredentials: true,
     });
     setInformaciones(response.data);
@@ -203,7 +203,7 @@ const handleEliminarInformacion = async () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:9000/usuario-numeros",
+        "http://localhost:9000/usuarios_numeros",
         {
           nombre: nuevoUsuario.nombre,
           numero: nuevoUsuario.numero,

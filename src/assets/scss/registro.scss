@@ -1,4 +1,3 @@
-/* SCSS Styles (registro.scss): */
 /*-----------------------------------------*/
 // Variables globales (puedes definir colores y valores reutilizables)
 $primary-color: #00acac; // Color principal usado en botones y textos destacados
@@ -22,7 +21,6 @@ $white: #ffffff; // Color blanco
     height: auto; // Ajustar altura automáticamente
   }
 }
-
 
 // Contenedor principal
 .registro-container {
@@ -48,7 +46,7 @@ $white: #ffffff; // Color blanco
   flex-direction: column;
   justify-content: center;
   padding: 2rem 1.5rem; // Espaciado interno
-  background: #026b6b; // Color de fondo específico
+  background: linear-gradient(to top right, #026b6b, #2D353C);
   align-items: center;
   color: #fff; // Texto en color blanco
   text-align: center; // Centrar texto
@@ -59,12 +57,12 @@ $white: #ffffff; // Color blanco
   }
 
   .welcome-image {
-    width: 60px; // Ancho fijo para la imagen
+    width: 99px; // Ancho fijo para la imagen
     margin-bottom: 1rem; // Espacio inferior
   }
 
   .login-title {
-    font-size: 2.5rem; // Más grande el "Sos911"
+    font-size: 2.99rem; // Más grande el "Sos911"
     font-weight: bold;
     margin-bottom: 0.5rem;
 
@@ -78,14 +76,14 @@ $white: #ffffff; // Color blanco
   }
 
   .welcome-text {
-    font-size: 1.3rem; // Más grande el subtítulo
+    font-size: 1.4rem; // Más grande el subtítulo
     margin-bottom: 1.5rem;
     color: #e0e0e0;
   }
 
   .welcome-person-image {
-    width: 280px; // Más grande
-    border-radius: 18px;
+    width: 214px; // Más grande
+    border-radius: 900px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
     margin-top: 1rem; // Espacio superior
   }
@@ -121,74 +119,120 @@ $white: #ffffff; // Color blanco
     margin-bottom: 1rem;
 
     .etiqueta {
-      color: #bdbdbd;
+      color: #ffffff;
       font-size: 0.95rem;
       margin-bottom: 0.3rem;
       display: block;
     }
 
-    .entrada {
-      width: 100%; // Ocupar todo el ancho
-      padding: 0.6rem 0.9rem; // Espaciado interno
-      border-radius: 8px; // Bordes redondeados
-      border: none; // Sin borde
-      background: #18192b; // Color de fondo
-      color: #fff; // Texto en blanco
-      font-size: 1rem; // Tamaño de fuente
-      margin-top: 0.2rem; // Margen superior
-      outline: none; // Sin contorno
-      transition: box-shadow 0.2s; // Transición suave para la sombra
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); // Sombra sutil
+    /* Estilos para el contenedor del input con icono */
+    .input-with-icon {
+      position: relative; // Contenedor padre para el posicionamiento absoluto del icono
+      display: flex; // Para alinear el icono y el input si quieres un layout diferente
+      align-items: center; // Centrar verticalmente el icono y el input
 
-      &:focus {
-        box-shadow: 0 0 0 2px #00acac; // Sombra verde al enfocar
+      .input-icon {
+        position: absolute; // Posicionar el icono absolutamente
+        color: #ffffff; // Color del icono (blanco)
+        font-size: 1.1rem; // Tamaño del icono
+        z-index: 10; // Asegura que el icono esté por encima del input
+
+        &.left-icon { // Estilos para los iconos a la izquierda
+            left: 10px; // Distancia desde la izquierda
+        }
+
+        &.password-toggle-icon { // Estilos para el icono del "ojito"
+            right: 10px; // Distancia desde la derecha
+            cursor: pointer; // Cambiar el cursor a "pointer" para indicar que es clickeable
+        }
+      }
+
+      .entrada {
+        width: 100%; // Ocupar todo el ancho
+        padding: 0.6rem 0.9rem; // Espaciado interno
+        padding-left: 40px; // Añade espacio a la izquierda para el icono
+        border-radius: 8px; // Bordes redondeados
+        border: none; // Sin borde
+        background: #18192b; // Color de fondo
+        color: #fff; // Texto en blanco
+        font-size: 1rem; // Tamaño de fuente
+        margin-top: 0.2rem; // Margen superior
+        outline: none; // Sin contorno
+        transition: box-shadow 0.2s; // Transición suave para la sombra
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08); // Sombra sutil
+
+        // ESTILOS PARA CORREGIR EL AUTOCOMPLETADO Y HOVER/FOCUS
+        &:-webkit-autofill,
+        &:-webkit-autofill:hover,
+        &:-webkit-autofill:focus,
+        &:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0px 1000px #18192b inset !important; // Fondo oscuro para autocompletado
+            -webkit-text-fill-color: #fff !important; // Texto blanco para autocompletado
+            transition: background-color 5000s ease-in-out 0s; // Truco para mantener el color de fondo
+        }
+
+        &:hover {
+            background: #18192b; // Asegura que el fondo permanezca oscuro
+            color: #fff; // Asegura que el texto permanezca blanco
+        }
+
+        &:focus {
+            box-shadow: 0 0 0 2px #00acac; // Tu sombra verde al enfocar
+            background: #18192b; // Asegura que el fondo permanezca oscuro
+            color: #fff; // Asegura que el texto permanezca blanco
+        }
+
+        &.password-input { // Estilos específicos para el input de contraseña
+            padding-right: 40px; // Añade espacio a la derecha para el icono del ojo
+        }
       }
     }
   }
 
   .checkbox-group {
-    align-items: flex-start; // Alinear verticalmente
+    display: flex;
+    align-items: flex-start;
     margin-bottom: 1rem;
 
     .checkbox {
-      accent-color: #00acac; // Color verde para el checkbox
+      accent-color: #00acac;
       margin-top: 0.2rem;
+      flex-shrink: 0;
     }
 
     p {
       color: #bdbdbd;
       font-size: 0.85rem;
       margin: 0 0 0 0.5rem;
-      display: inline;
     }
 
     .enlace-terminos {
-      color: #00acac;
+      color: #01dada;
       text-decoration: underline;
 
       &:hover {
-        color: #fff; // Cambiar color al pasar el mouse
+        color: #fff;
       }
     }
   }
 
   .boton {
-    width: 100%; // Botón ocupa todo el ancho
-    padding: 0.7rem 0; // Espaciado interno
-  background: #026b6b; // Color de fondo específico
-    color: #fff; // Texto en blanco
-    border: none; // Sin borde
-    border-radius: 8px; // Bordes redondeados
-    font-weight: bold; // Texto en negrita
-    font-size: 1.1rem; // Tamaño de fuente
-    margin-top: 0.8rem; // Margen superior
-    cursor: pointer; // Cambiar el cursor al pasar encima
-    transition: background 0.2s, box-shadow 0.2s; // Transiciones suaves
-    box-shadow: 0 2px 8px rgba(46, 74, 98, 0.18); // Sombra del botón
+    width: 100%;
+    padding: 0.7rem 0;
+    background-color: #008080;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin-top: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(46, 74, 98, 0.18);
 
     &:hover {
-      background: #1b5e7a; // Más oscuro al pasar el mouse
-      box-shadow: 0 4px 16px rgba(46, 74, 98, 0.28); // Aumentar sombra en hover
+      background-color: #005f5f;
+      box-shadow: 0 4px 16px rgba(46, 74, 98, 0.28);
     }
   }
 
@@ -199,11 +243,11 @@ $white: #ffffff; // Color blanco
     text-align: center;
 
     .enlace {
-      color: #00acac; // Color de enlace
-      text-decoration: underline; // Subrayado
+      color: #01dada;
+      text-decoration: underline;
 
       &:hover {
-        color: #fff; // Cambiar color al pasar el mouse
+        color: #fff;
       }
     }
   }
@@ -219,52 +263,52 @@ $white: #ffffff; // Color blanco
   }
 }
 
-// Estilos para el modal
+// Estilos para el modal (mantener los que ya tienes)
 .modal-overlay {
-  position: fixed; // Fijar posición
-  top: 0; // Desde la parte superior
-  left: 0; // Desde la parte izquierda
-  width: 100%; // Ocupa todo el ancho
-  height: 100%; // Ocupa toda la altura
-  background: rgba(0, 0, 0, 0.5); // Fondo semitransparente
-  display: flex; // Flexbox
-  justify-content: center; // Centrar horizontalmente
-  align-items: center; // Centrar verticalmente
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .modal {
-  background: $white; // Fondo blanco
-  padding: 2rem; // Espaciado interno
-  border-radius: 8px; // Bordes redondeados
-  text-align: center; // Centrar texto
+  background: $white;
+  padding: 2rem;
+  border-radius: 8px;
+  text-align: center;
 
   @media (max-width: 768px) {
-    padding: 1.5rem; // Reducir espaciado en pantallas pequeñas
+    padding: 1.5rem;
   }
 
   .modal-texto {
-    margin-bottom: 1rem; // Espacio inferior
-    font-size: 1.2rem; // Tamaño de texto
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
 
     @media (max-width: 768px) {
-      font-size: 1rem; // Reducir tamaño en pantallas pequeñas
+      font-size: 1rem;
     }
   }
 
   .boton-cerrar {
-    background-color: $primary-color; // Color de fondo
-    color: $white; // Texto en blanco
-    border: none; // Sin borde
-    padding: 0.75rem; // Espaciado interno
-    border-radius: 6px; // Bordes redondeados
-    cursor: pointer; // Cambiar cursor
+    background-color: $primary-color;
+    color: $white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 6px;
+    cursor: pointer;
 
     &:hover {
-      background-color: $secondary-color; // Cambiar color al pasar el mouse
+      background-color: $secondary-color;
     }
 
     @media (max-width: 768px) {
-      padding: 0.6rem; // Reducir espaciado en pantallas pequeñas
+      padding: 0.6rem;
     }
   }
 }
@@ -339,8 +383,7 @@ $white: #ffffff; // Color blanco
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: #000;
-  background-image: url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iMTkuNSIgbnVtT2N0YXZlcz0iMTAiIHJlc3VsdD0idHVyYnVsZW5jZSIvPjxmZUNvbXBvc2l0ZSBvcGVyYXRvcj0iaW4iIGluPSJ0dXJidWxlbmNlIiBpbjI9IlNvdXJjZUFscGhhIiByZXN1bHQ9ImNvbXBvc2l0ZSIvPjxmZUNvbG9yTWF0cml4IGluPSJjb21wb3NpdGUiIHR5cGU9Imx1bWluYW5jZVRvQWxwaGEiLz48ZmVCbGVuZCBpbj0iU291cmNlR3JhcGhpYyIgaW4yPSJjb21wb3NpdGUiIG1vZGU9ImNvbG9yLWJ1cm4iLz48L2ZpbHRlcj48L2RlZnM+PGcgZmlsdGVyPSJ1cmwoJyNhJykiPjxwYXRoIGZpbGw9IiMyNmIiIGQ9Ik0wIDBoMTAwdjEwMEgweiIvPjxwYXRoIGQ9Ik0wIDB2MTAwaDEwMFYwWiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2U9IiM0OGYiIGZpbGw9IiMwMDAwIi8+PHBhdGggZmlsbD0iIzQ4ZjUiIGQ9Ik01MCAwaDF2MTAwaC0xeiIvPjxwYXRoIGZpbGw9IiM0OGY1IiBkPSJNMCA1MGgxMDB2MUgweiIvPjwvZz48L3N2Zz4=");
-  mask: linear-gradient(#0004, #000);
+  background: linear-gradient(to top right, #026b6b, #2D353C); // Solo el fondo gradiente
+
   pointer-events: none;
 }

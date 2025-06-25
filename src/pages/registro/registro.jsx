@@ -5,6 +5,10 @@ import "../../assets/scss/registro.scss";
 import personImg from "../../assets/img/person.png";
 import instance from "../../api/axios";
 
+// Importa los iconos que necesites
+// Asegúrate de importar FaEye y FaEyeSlash para el "ojito"
+import { FaUser, FaIdCard, FaMapMarkerAlt, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+
 const Registro = () => {
   const navigate = useNavigate();
 
@@ -19,6 +23,7 @@ const Registro = () => {
 
   const [csrfToken, setCsrfToken] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // <--- NUEVO ESTADO: Para controlar la visibilidad de la contraseña
 
   useEffect(() => {
     const fetchCsrfToken = async () => {
@@ -40,12 +45,17 @@ const Registro = () => {
     });
   };
 
+  // <--- NUEVA FUNCIÓN: Para alternar la visibilidad de la contraseña
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     try {
       const response = await instance.post(
-        "/registro",
+        "/usuarios/registro",
         {
           nombre: formData.nombre,
           cedula_identidad: formData.cedula_identidad,
@@ -103,67 +113,95 @@ const Registro = () => {
             <div className="form-columns">
               <div className="form-group">
                 <label className="etiqueta">Nombres *</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  value={formData.nombre}
-                  onChange={handleChange}
-                  placeholder="Ingresa tus nombres"
-                  required
-                  className="entrada"
-                />
+                <div className="input-with-icon">
+                  <FaUser className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    placeholder="Ingresa tus nombres"
+                    required
+                    className="entrada"
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label className="etiqueta">Cédula *</label>
-                <input
-                  type="text"
-                  name="cedula_identidad"
-                  value={formData.cedula_identidad}
-                  onChange={handleChange}
-                  placeholder="Ingresa tu cédula"
-                  required
-                  className="entrada"
-                />
+                <div className="input-with-icon">
+                  <FaIdCard className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <input
+                    type="text"
+                    name="cedula_identidad"
+                    value={formData.cedula_identidad}
+                    onChange={handleChange}
+                    placeholder="Ingresa tu cédula"
+                    required
+                    className="entrada"
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label className="etiqueta">Dirección *</label>
-                <input
-                  type="text"
-                  name="direccion"
-                  value={formData.direccion}
-                  onChange={handleChange}
-                  placeholder="Ingresa tu dirección"
-                  required
-                  className="entrada"
-                />
+                <div className="input-with-icon">
+                  <FaMapMarkerAlt className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <input
+                    type="text"
+                    name="direccion"
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    placeholder="Ingresa tu dirección"
+                    required
+                    className="entrada"
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label className="etiqueta">Correo Electrónico *</label>
-                <input
-                  type="email"
-                  name="correo_electronico"
-                  value={formData.correo_electronico}
-                  onChange={handleChange}
-                  placeholder="Ingresa tu correo"
-                  required
-                  className="entrada"
-                />
+                <div className="input-with-icon">
+                  <FaEnvelope className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <input
+                    type="email"
+                    name="correo_electronico"
+                    value={formData.correo_electronico}
+                    onChange={handleChange}
+                    placeholder="Ingresa tu correo"
+                    required
+                    className="entrada"
+                  />
+                </div>
               </div>
 
               <div className="form-group">
                 <label className="etiqueta">Contraseña *</label>
-                <input
-                  type="password"
-                  name="contrasena"
-                  value={formData.contrasena}
-                  onChange={handleChange}
-                  placeholder="Crea una contraseña"
-                  required
-                  className="entrada"
-                />
+                <div className="input-with-icon">
+                  <FaLock className="input-icon left-icon" /> {/* Icono de candado izquierdo */}
+                  <input
+                    // Cambia el tipo según el estado showPassword
+                    type={showPassword ? "text" : "password"}
+                    name="contrasena"
+                    value={formData.contrasena}
+                    onChange={handleChange}
+                    placeholder="Crea una contraseña"
+                    required
+                    className="entrada password-input" // Añade una clase específica para el input de contraseña
+                  />
+                  {/* Icono del ojo: cambia FaEye por FaEyeSlash según el estado */}
+                  {showPassword ? (
+                    <FaEyeSlash
+                      className="input-icon password-toggle-icon" // Clase para el icono del ojo
+                      onClick={togglePasswordVisibility} // Manejador de click
+                    />
+                  ) : (
+                    <FaEye
+                      className="input-icon password-toggle-icon" // Clase para el icono del ojo
+                      onClick={togglePasswordVisibility} // Manejador de click
+                    />
+                  )}
+                </div>
               </div>
             </div>
 

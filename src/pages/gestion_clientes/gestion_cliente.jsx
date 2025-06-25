@@ -1,11 +1,12 @@
-/* gestion_clientes.jsx */
-/* -------------------*/
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search, Trash } from "lucide-react";
 import ClienteModal from "./cliente_modal.jsx";
+import axios from "axios";
+import Swal from 'sweetalert2';
 
-const BASE_IMG_URL = "/assets/img/"; // Base URL para las imágenes de clientes
+const BASE_IMG_URL = "/assets/img/";
+const DEFAULT_IMG = "usu.jpg";
 
 // Componente para representar una tarjeta de cliente
 function ClienteCard({ cliente, onVerInformacionClick, onSelectCliente, isSelected, isDeleted }) {
@@ -18,7 +19,7 @@ function ClienteCard({ cliente, onVerInformacionClick, onSelectCliente, isSelect
             }}
             onMouseEnter={(e) => {
                 if (!isDeleted) {
-                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.transform = "scale(1.04)";
                     e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
                 }
             }}
@@ -31,7 +32,7 @@ function ClienteCard({ cliente, onVerInformacionClick, onSelectCliente, isSelect
         >
             <div className="card border-0 shadow-sm rounded-3 overflow-hidden">
                 <img
-                    src={`${BASE_IMG_URL}${cliente.imagen}`}
+                    src={`${BASE_IMG_URL}${cliente.imagen || DEFAULT_IMG}`}
                     className="card-img-top"
                     alt={`Imagen de ${cliente.nombre}`}
                     style={{
@@ -53,7 +54,9 @@ function ClienteCard({ cliente, onVerInformacionClick, onSelectCliente, isSelect
                             className="form-check-input"
                             checked={isSelected}
                             onChange={() => onSelectCliente(cliente.id)}
+                            disabled={isDeleted}
                         />
+                        {isDeleted && <span className="ms-2 text-danger fw-bold">ELIMINADO</span>}
                     </div>
                 </div>
             </div>
@@ -63,59 +66,154 @@ function ClienteCard({ cliente, onVerInformacionClick, onSelectCliente, isSelect
 
 // Componente principal para la gestión de clientes
 function GestionClientes() {
-    const [clientes, setClientes] = useState([
-        { id: 1, nombre: "Juan Pacho", imagen: "h1.jpg", eliminado: false },
-        { id: 2, nombre: "Pablo Vargas", imagen: "h2.jpg", eliminado: false },
-        { id: 3, nombre: "Amy Lopez", imagen: "h3.jpg", eliminado: false },
-        { id: 4, nombre: "Jose Ruiz", imagen: "h4.jpg", eliminado: false },
-        { id: 5, nombre: "Lina Egas", imagen: "h5.jpg", eliminado: false },
-        { id: 6, nombre: "Abel Mendoza", imagen: "h6.jpg", eliminado: false },
-        { id: 7, nombre: "Ana Pogo", imagen: "h11.jpg", eliminado: false },
-        { id: 8, nombre: "Luisa Ramos", imagen: "h12.jpg", eliminado: false },
-        { id: 9, nombre: "Juanita Pérez", imagen: "chica3.jpg", eliminado: false },
-        { id: 10, nombre: "Tomas Ruiz", imagen: "chica4.jpg", eliminado: false },
-    ]);
-
+    const [clientes, setClientes] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [busqueda, setBusqueda] = useState("");
     const [clienteSeleccionado, setClienteSeleccionado] = useState(null);
     const [clientesSeleccionados, setClientesSeleccionados] = useState([]);
     const [paginaActual, setPaginaActual] = useState(1);
     const clientesPorPagina = 8;
 
+    // Fetch clients from API on component mount
+    useEffect(() => {
+        const fetchClientes = async () => {
+            try {
+                axios.defaults.withCredentials = true;
+                const response = await axios.get('http://192.168.1.31:9000/clientes');
+                setClientes(response.data.map(c => ({
+                    id: c.id, // <-- CORRECTO
+                    nombre: c.nombre,
+                    correo: c.correo_electronico,
+                    cedula: c.cedula_identidad,
+                    direccion: c.direccion,
+                    estado: c.estado,
+                    numero_ayudas: c.numero_ayudas,
+                    eliminado: c.estado_eliminado === 'eliminado',
+                    imagen: c.imagen || DEFAULT_IMG
+                })));
+                setIsLoading(false);
+            } catch (error) {
+                console.error("Error al obtener los clientes:", error.response?.data || error.message);
+                setIsLoading(false);
+            }
+        };
+        fetchClientes();
+    }, []);
+
+    // Filtering and Sorting Clients
     const clientesFiltrados = clientes.filter((cliente) =>
         cliente.nombre.toLowerCase().includes(busqueda.toLowerCase())
     );
-
     const clientesOrdenados = [
         ...clientesFiltrados.filter((cliente) => !cliente.eliminado),
         ...clientesFiltrados.filter((cliente) => cliente.eliminado),
     ];
-
     const indexOfLastClient = paginaActual * clientesPorPagina;
     const indexOfFirstClient = indexOfLastClient - clientesPorPagina;
     const clientesMostrados = clientesOrdenados.slice(indexOfFirstClient, indexOfLastClient);
-
     const totalPaginas = Math.ceil(clientesOrdenados.length / clientesPorPagina);
 
-    const handleEliminarClientes = () => {
-        const clientesActualizados = clientes.map((cliente) =>
-            clientesSeleccionados.includes(cliente.id) ? { ...cliente, eliminado: true } : cliente
+    // Selección múltiple de clientes
+    const handleSeleccionarCliente = (id) => {
+        setClientesSeleccionados((prev) =>
+            prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
         );
-        setClientes(clientesActualizados);
-        setClientesSeleccionados([]);
     };
 
-    const handleSeleccionarCliente = (id) => {
-        setClientesSeleccionados((prevSeleccionados) =>
-            prevSeleccionados.includes(id)
-                ? prevSeleccionados.filter((clienteId) => clienteId !== id)
-                : [...prevSeleccionados, id]
+    // Eliminar clientes seleccionados
+const handleEliminarClientes = async () => {
+    if (clientesSeleccionados.length === 0) return;
+
+    const result = await Swal.fire({
+        title: `¿Estás seguro de que quieres eliminar ${clientesSeleccionados.length} cliente(s)?`,
+        text: "¡Esta acción no se puede deshacer!",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#3085d6",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar"
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        // 1. Obtener token CSRF
+        const csrfRes = await axios.get('http://localhost:9000/csrf-token', {
+            withCredentials: true
+        });
+        const csrfToken = csrfRes.data.csrfToken;
+
+        // 2. Configurar headers
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken,
+            'Authorization': `Bearer ${localStorage.getItem('token')}` // Si usas autenticación JWT
+        };
+
+        // 3. Enviar solicitudes de eliminación - ¡CAMBIADO A LA RUTA CORRECTA!
+        const deletionPromises = clientesSeleccionados.map(id =>
+            axios.put(`http://localhost:9000/clientes/${id}`, 
+                { estado_eliminado: "eliminado" }, // Asegúrate que este sea el campo correcto
+                { 
+                    headers: headers,
+                    withCredentials: true 
+                }
+            )
         );
-    };
+
+        await Promise.all(deletionPromises);
+
+        // 4. Actualizar estado del frontend
+        setClientes(prevClientes => 
+            prevClientes.map(cliente =>
+                clientesSeleccionados.includes(cliente.id)
+                    ? { ...cliente, eliminado: true }
+                    : cliente
+            )
+        );
+
+        setClientesSeleccionados([]);
+        Swal.fire("¡Eliminado!", "Cliente(s) eliminado(s) exitosamente.", "success");
+    } catch (error) {
+        console.error("Error al eliminar cliente(s):", error.response?.data || error.message);
+        Swal.fire("Error", error.response?.data?.message || "Error al eliminar cliente(s)", "error");
+    }
+};
 
     const handleCambiarPagina = (numeroPagina) => {
         setPaginaActual(numeroPagina);
     };
+
+    const handleUpdateCliente = (updatedClientData) => {
+        setClientes((prevClientes) =>
+            prevClientes.map((client) =>
+                client.id === updatedClientData.id ? { ...client, ...updatedClientData } : client
+            )
+        );
+        if (clienteSeleccionado && clienteSeleccionado.id === updatedClientData.id) {
+            setClienteSeleccionado(null);
+        }
+    };
+
+    if (isLoading) {
+        return (
+            <div>
+                <h1 className="page-header">
+                    Cargando Clientes <small>Obteniendo datos del servidor...</small>
+                </h1>
+                <Panel>
+                    <PanelBody>
+                        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    </PanelBody>
+                </Panel>
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -149,24 +247,32 @@ function GestionClientes() {
                                 >
                                     <Trash size={18} /> Eliminar
                                 </button>
-
                             </div>
                         </div>
                     </div>
 
-          {/* Renderiza las tarjetas de clientes */}
-                    <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-                        {clientesMostrados.map((cliente) => (
-                            <ClienteCard
-                                key={cliente.id}
-                                cliente={cliente}
-                                onVerInformacionClick={setClienteSeleccionado}
-                                onSelectCliente={handleSeleccionarCliente}
-                                isSelected={clientesSeleccionados.includes(cliente.id)}
-                                isDeleted={cliente.eliminado}
-                            />
-                        ))}
-                    </div>
+                    {clientesMostrados.length === 0 && !busqueda ? (
+                        <div className="alert alert-info text-center">
+                            No hay clientes registrados aún.
+                        </div>
+                    ) : clientesMostrados.length === 0 && busqueda ? (
+                        <div className="alert alert-warning text-center">
+                            No se encontraron clientes con el nombre "{busqueda}".
+                        </div>
+                    ) : (
+                        <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                            {clientesMostrados.map((cliente) => (
+                                <ClienteCard
+                                    key={cliente.id}
+                                    cliente={cliente}
+                                    onVerInformacionClick={setClienteSeleccionado}
+                                    onSelectCliente={handleSeleccionarCliente}
+                                    isSelected={clientesSeleccionados.includes(cliente.id)}
+                                    isDeleted={cliente.eliminado}
+                                />
+                            ))}
+                        </div>
+                    )}
 
                     <nav aria-label="Page navigation" className="mt-4">
                         <ul className="pagination justify-content-end">
@@ -208,6 +314,7 @@ function GestionClientes() {
                 <ClienteModal
                     cliente={clienteSeleccionado}
                     onClose={() => setClienteSeleccionado(null)}
+                    onUpdateCliente={handleUpdateCliente}
                 />
             )}
         </div>

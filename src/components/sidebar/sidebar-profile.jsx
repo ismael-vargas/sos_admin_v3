@@ -48,7 +48,7 @@ function SidebarProfile() {
               </div>
               <div className="menu-profile-info">
                 <div className="d-flex align-items-center">
-                  <div className="flex-grow-1">Moderador</div>
+                  <div className="flex-grow-1">Bienvenido</div>
                   <div className="menu-caret ms-auto"></div>
                 </div>
                 <small></small>

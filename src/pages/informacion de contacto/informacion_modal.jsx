@@ -16,7 +16,7 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
 
     try {
       const response = await axios.put(
-        `http://localhost:9000/usuario-numero/${informacion.id}`, // Ruta corregida
+        `http://localhost:9000/usuarios_numeros/${informacion.id}`, // Ruta corregida
         { nombre, numero },
         {
           headers: {
