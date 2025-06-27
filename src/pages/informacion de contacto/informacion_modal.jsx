@@ -81,7 +81,7 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
       >
         <div className="modal-content" style={{ borderRadius: "0", border: "none" }}>
           <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
-            <h5 className="modal-title">
+            <h5 className="modal-title" style={{ fontSize: "1.05rem" }}>
               Detalles del Usuario: <strong>{informacion.nombre}</strong>
             </h5>
             <button

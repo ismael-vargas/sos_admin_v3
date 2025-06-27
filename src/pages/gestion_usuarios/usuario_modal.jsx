@@ -91,7 +91,7 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
         <div className="modal-content">
           {/* Header del modal */}
           <div className="modal-header bg-dark text-white border-0">
-            <h5 className="modal-title">
+            <h5 className="modal-title" style={{ fontSize: "1.004rem" }}>
               Detalles del Usuario: <strong>{usuario.nombre}</strong>
             </h5>
             <button
@@ -152,11 +152,6 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
               </div>
             </div>
 
-            {/* Rol del usuario */}
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Rol:</div>
-              <div className="col-6">{usuario.rol || "N/A"}</div>
-            </div>
           </div>
 
           {/* Footer con botones */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import "../../assets/scss/registro.scss";
 import personImg from "../../assets/img/person.png";
@@ -25,7 +25,16 @@ const Registro = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false); // <--- NUEVO ESTADO: Para controlar la visibilidad de la contraseña
 
+   // --- ESTADOS PARA ANIMACIÓN ---
+  const [isLoaded, setIsLoaded] = useState(false); // Para la animación de entrada
+  const [isExiting, setIsExiting] = useState(false); // Para la animación de salida
+
+
+
   useEffect(() => {
+
+     setIsLoaded(true);
+     
     const fetchCsrfToken = async () => {
       try {
         const response = await instance.get("/csrf-token");
@@ -80,7 +89,7 @@ const Registro = () => {
           timer: 3000,
           timerProgressBar: true
         }).then(() => {
-          navigate("/login");
+           handleNavigateBack(e); // Usamos nuestra función para animar la salida
         });
       } else {
         setErrorMessage(response.data.message || "Error al registrar el usuario.");
@@ -91,8 +100,17 @@ const Registro = () => {
     }
   };
 
+    // --- FUNCIÓN PARA ANIMAR LA SALIDA Y VOLVER AL LOGIN ---
+  const handleNavigateBack = (e) => {
+    e.preventDefault();
+    setIsExiting(true); // Activa la animación de salida
+    setTimeout(() => {
+      navigate('/login'); // Navega después de 500ms
+    }, 500);
+  };
+
   return (
-    <div className="registro-outer-container">
+   <div className={`registro-outer-container ${isLoaded ? 'loaded' : ''} ${isExiting ? 'exiting' : ''}`}>
       <div className="registro-bg"></div>
       <div className="registro-card">
         <div className="left-container">
@@ -220,7 +238,9 @@ const Registro = () => {
           </form>
 
           <p className="texto-enlace">
-            ¿Ya eres miembro? <a href="/login" className="enlace">Haz clic aquí para iniciar sesión</a>
+            ¿Ya eres miembro?  <Link to="/login" className="enlace" onClick={handleNavigateBack}>
+                Haz clic aquí para iniciar sesión
+            </Link>
           </p>
         </div>
       </div>

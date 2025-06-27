@@ -212,7 +212,7 @@ const AppContent = ({ editing, sosText, setSosText, callText, setCallText }) => 
                     ) : (
                         <div className="sos-btn-text">{sosText || "SOS"}</div>
                     )}
-                    <div className="sos-btn-subtext">Presionar 5 veces</div>
+                    <div className="sos-btn-subtext">Presionar 3 veces</div>
                 </div>
             </div>
 

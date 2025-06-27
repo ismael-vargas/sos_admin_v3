@@ -28,6 +28,7 @@
     "crypto-js": "^4.2.0",
     "csurf": "^1.11.0",
     "flag-icons": "^7.2.3",
+    "framer-motion": "^12.19.1",
     "jsvectormap": "^1.6.0",
     "leaflet": "^1.9.4",
     "lity": "^2.4.1",

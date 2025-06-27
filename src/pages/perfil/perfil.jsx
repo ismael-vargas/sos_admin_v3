@@ -20,7 +20,11 @@ const Perfil = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const response = await axios.get("http://localhost:9000/usuarios/1", { withCredentials: true }); // Ajusta el ID según el usuario iniciado
+        const usuarioId = localStorage.getItem("usuario_id");
+        if (!usuarioId) {
+          throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
+        }
+        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
         setProfile(response.data);
         setTempProfile(response.data);
       } catch (error) {

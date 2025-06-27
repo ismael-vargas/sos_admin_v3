@@ -196,16 +196,34 @@
 			position: relative;
 					
 			& .menu-link {
-				padding: $app-sidebar-component-padding-y $app-sidebar-component-padding-x;
+				padding: rem(12px) rem(18px); 
 				line-height: $app-sidebar-menu-link-line-height;
 				color: var(--#{$prefix}app-sidebar-menu-link-color);
 				text-decoration: none;
 				display: flex;
+				align-items: center; // <-- Esto centra el ícono y el texto
 				align-items: center;
 				font-weight: var(--#{$prefix}app-sidebar-menu-link-font-weight);
+				font-size: rem(12px); // <-- Puedes añadir esta línea y ajustar el tamaño
+
+				 // --> AÑADE ESTO para la transición
+    transition: background-color 0.3s ease, transform 0.3s ease; 
+
+
+	 &:hover,
+    &:focus {
+        background: rgba(var(--#{$prefix}app-sidebar-menu-link-hover-color-rgb), 0.1); // Un color de fondo más claro
+        transform: scale(1.02); // Un ligero aumento de tamaño
+        color: var(--#{$prefix}app-sidebar-menu-link-hover-color);
+ & .menu-text {
+            transform: translateX(5px); // Mueve el texto 5px a la derecha
+        }
+		
+    }
 				
 				& .menu-text {
 					flex: 1;
+					transition: transform 0.3s ease; // <
 				}
 				& .menu-badge {
 					padding: 0 $badge-padding-x * 1.5;
@@ -245,13 +263,15 @@
 				display: flex;
 				align-items: center;
 				justify-content: center;
-				font-size: $app-sidebar-menu-icon-font-size;
+				font-size: rem(20px);
 				color: var(--#{$prefix}app-sidebar-menu-icon-color);
 				width: $app-sidebar-menu-icon-width;
 				height: $app-sidebar-menu-icon-height;
 				border-radius: $app-sidebar-menu-icon-border-radius;
 				margin-top: $app-sidebar-menu-icon-margin-y;
 				margin-bottom: $app-sidebar-menu-icon-margin-y;
+
+				  transition: transform 0.3s ease; // <-- AÑADE ESTO para la transición del ícono
 				
 				@if $enable-rtl {
 					margin-left: $app-sidebar-menu-icon-margin-x;
@@ -287,7 +307,7 @@
 				@if $enable-rtl {
 					margin-left: rem(10px);
 				} @else {
-					margin-right: rem(10px);
+				margin-right: rem(15px); // Puedes ajustar este valor, por ejemplo, a 18px o 20px
 				}
 				
 				& img {
@@ -314,6 +334,7 @@
 						padding: rem(3px) rem(20px) rem(3px) rem(15px);
 						text-decoration: none;
 						position: relative;
+						margin-bottom: rem(10px); // <-- Añade un margen en la parte inferior de cada elemento
 						line-height: rem(18px);
 						color: var(--#{$prefix}app-sidebar-menu-submenu-link-color);
 						font-weight: var(--#{$prefix}app-sidebar-menu-submenu-link-font-weight);

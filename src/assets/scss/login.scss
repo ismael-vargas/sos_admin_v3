@@ -1,3 +1,38 @@
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px); // Empieza 25px más abajo
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0); // Termina en su posición normal
+  }
+}
+
+// 2. Aplicamos la animación a los elementos que queremos que aparezcan
+.login-header,
+.login-subtitle,
+.login-form .form-group {
+  // Inicialmente, los elementos son invisibles para que la animación funcione al cargar
+  opacity: 0; 
+  
+  // Aplicamos la animación
+  animation-name: fadeInUp;
+  animation-duration: 0.7s;       // Duración de la animación
+  animation-timing-function: ease-out; // Hace que termine suavemente
+  animation-fill-mode: forwards;  // Mantiene el estado final (visible)
+}
+
+// 3. Creamos un efecto escalonado con retrasos
+.login-header                 { animation-delay: 0.1s; }
+.login-subtitle               { animation-delay: 0.2s; }
+.login-form .form-group:nth-of-type(1) { animation-delay: 0.3s; } // Input de usuario
+.login-form .form-group:nth-of-type(2) { animation-delay: 0.4s; } // Input de contraseña
+.login-form .form-group:nth-of-type(3) { animation-delay: 0.5s; } // Checkbox "Recuérdame"
+.login-form .form-group:nth-of-type(4) { animation-delay: 0.6s; } // Botón
+.login-register-text          { animation-delay: 0.7s; } // Texto de registro
+
+
 // Contenedor principal
 .login-container {
   position: absolute;

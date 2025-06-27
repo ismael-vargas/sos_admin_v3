@@ -1,5 +1,5 @@
 const Menu = [
-  { path: '/dashboard', icon: 'fa fa-tachometer', title: 'Dashboard' }, // Icono de dashboard/panel
+{ path: '/dashboard', icon: 'fa-solid fa-house', title: 'Dashboard' }, // Icono de dashboard/panel
   { path: '/gestion-usuarios', icon: 'fa fa-user-cog', title: 'Gestión de usuarios' }, // Icono de gestión de usuario
   { path: '/informacion-contacto-usuarios', icon: 'fa fa-address-card', title: 'Información de contacto de usuarios' }, // Icono de tarjeta de contacto
   { path: '/rol', icon: 'fa fa-user-shield', title: 'Rol' }, // Icono que representa mejor un rol/permiso
