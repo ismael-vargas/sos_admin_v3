@@ -2,6 +2,7 @@
 /* -------------------*/
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import Swal from "sweetalert2";
 
 function InformacionModal({ informacion, onClose }) {
     const [nombre, setNombre] = useState(informacion.nombre); // Estado para editar el nombre
@@ -15,6 +16,14 @@ function InformacionModal({ informacion, onClose }) {
         informacion.numero = numero; // Guardamos los cambios en el número
         setEditando(false); // Salimos del modo de edición
         onClose(); // Cerramos el modal
+        // SweetAlert2 para éxito
+        Swal.fire({
+            icon: "success",
+            title: "¡Edición exitosa!",
+            text: "El contacto ha sido actualizado correctamente.",
+            timer: 1500,
+            showConfirmButton: false,
+        });
     };
 
     const handleSeleccionar = () => {
@@ -44,7 +53,10 @@ function InformacionModal({ informacion, onClose }) {
             >
                 <div className="modal-content" style={{ borderRadius: "0", border: "none" }}>
                     <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
-                        <h5 className="modal-title">
+                        <h5
+              className="modal-title text-truncate"
+              style={{ maxWidth: "100%", fontSize: "15px" }}
+            >
                             Detalles del Cliente: <strong>{informacion.nombre}</strong>
                         </h5>
                         <button
@@ -106,17 +118,19 @@ function InformacionModal({ informacion, onClose }) {
                     <div className="modal-footer bg-light d-flex justify-content-center">
                         {!editando ? (
                             <button
-                                className="btn btn-primary me-2"
+                                className="btn me-2 d-flex align-items-center justify-content-center"
+                                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
                                 onClick={() => setEditando(true)}
                             >
-                                Editar
+                                <i className="fas fa-edit me-2"></i> Editar Estado
                             </button>
                         ) : (
                             <button
-                                className="btn btn-success me-2"
+                                className="btn me-2 d-flex align-items-center justify-content-center"
+                                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
                                 onClick={guardarCambios}
                             >
-                                Guardar Cambios
+                                <i className="fas fa-save me-2"></i> Guardar Cambios
                             </button>
                         )}
                     </div>

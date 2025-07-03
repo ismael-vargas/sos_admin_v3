@@ -40,19 +40,35 @@ const Login = () => {
     e.preventDefault && e.preventDefault();
     setError("");
     console.log("[LOGIN] Intentando iniciar sesión...", reintento ? "(reintento)" : "");
+
     try {
+      // Verifica el token CSRF justo antes de enviar
+      if (!csrfToken) {
+        console.warn("[LOGIN] CSRF token no disponible. Reintentando obtenerlo...");
+        const nuevoToken = await fetchCsrfToken();
+        if (!nuevoToken) {
+          setError("No se pudo obtener el token de seguridad. Por favor, recarga la página.");
+          return;
+        }
+        // No reintenta aquí, espera al siguiente submit
+        return;
+      }
+
+      const tokenToSend = csrfToken || localStorage.getItem("csrfToken");
+
       const response = await instance.post(
         "/usuarios/login",
         {
-          correo_electronico: email, // Será cifrado automáticamente
+          correo_electronico: email,
           contrasena: password,
         },
         {
           headers: {
-            "X-CSRF-Token": csrfToken,
+            "X-CSRF-Token": tokenToSend,
           },
         }
       );
+
       console.log("[LOGIN] Respuesta del backend:", response);
 
       if (response.status === 200 && response.data && response.data.usuario_id) {
@@ -74,19 +90,18 @@ const Login = () => {
               content.querySelector("strong")?.classList.add("custom-welcome");
             }
           },
-        });
-
-        setTimeout(() => {
-          console.log("[LOGIN] Redirigiendo al dashboard...");
+        }).then(() => {
+          // Redirige solo después de cerrar el modal
+          console.log("[LOGIN] SweetAlert cerrado, redirigiendo...");
           navigate("/dashboard");
-        }, 1300);
+        });
       } else {
         setError("Credenciales inválidas o sesión expirada. Intenta recargar la página.");
         console.warn("[LOGIN] Respuesta inesperada:", response);
         Swal.fire({
           icon: "error",
           title: "Error de autenticación",
-          text: "Credenciales inválidas o sesión expirada. Intenta recargar la página.",
+          text: "Credenciales inválidas o ha ocurrido un error. Intenta recargar la página.",
           confirmButtonText: "Entendido",
           confirmButtonColor: "#d33",
         });
@@ -94,19 +109,19 @@ const Login = () => {
     } catch (err) {
       console.error("[LOGIN] Error en login:", err);
       let msg = "Ha ocurrido un error inesperado.";
-      // Si es error de sesión o CSRF, reintenta automáticamente una vez
-      if ((err.response?.status === 403 || err.response?.status === 401) && !reintento) {
-        msg = "Sesión o token inválido. Reintentando automáticamente...";
-        console.warn("[LOGIN] Token o sesión inválida, reintentando login tras refrescar CSRF...");
+      // Manejo específico de error CSRF
+      const isCsrfError = err.response?.status === 419 || (err.response?.status === 403 && err.response?.data?.message?.includes('CSRF token'));
+      if (isCsrfError && !reintento) {
+        msg = "Token de seguridad inválido. Reintentando automáticamente...";
+        console.warn("[LOGIN] Token CSRF inválido, reintentando login tras refrescar CSRF...");
         const nuevoToken = await fetchCsrfToken();
         if (nuevoToken) {
           setCsrfToken(nuevoToken);
-          // Reintenta el login una sola vez
           setTimeout(() => handleSubmit(e, true), 100);
           return;
         }
-      } else if (err.response?.status === 403 || err.response?.status === 401) {
-        msg = "Sesión o token inválido. Por favor, recarga la página e intenta de nuevo.";
+      } else if (err.response?.status === 401) {
+        msg = "Credenciales incorrectas. Por favor, verifica tu usuario y contraseña.";
       } else if (err.response?.data?.message) {
         msg = err.response.data.message;
       }
@@ -192,6 +207,7 @@ const Login = () => {
           <button
             type="submit"
             className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
+            disabled={!csrfToken}
           >
             Iniciar Sesión
             <i
@@ -199,6 +215,9 @@ const Login = () => {
               style={{ fontSize: "1.3rem", color: "#fff" }}
             ></i>
           </button>
+          {!csrfToken && (
+            <div className="alert alert-info mt-2">Cargando seguridad...</div>
+          )}
 
           <p className="login-register-text mt-3">
             ¿Aún no eres miembro? Haz clic{" "}

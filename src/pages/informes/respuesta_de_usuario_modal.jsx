@@ -2,17 +2,15 @@
 /* -------------------*/
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import Swal from "sweetalert2";
 
-// Base URL para las imágenes de los usuarios
 const BASE_IMG_URL = "/assets/img/";
 
 // Función para generar un número aleatorio dentro de un rango
 const generarNumeroAleatorio = (min, max) =>
   Math.floor(Math.random() * (max - min + 1)) + min;
 
-function RespuestaDeUsuarioModal({ usuario, onClose }) {
-  const [mostrarAlerta, setMostrarAlerta] = useState(false);
-
+function RespuestaDeUsuarioModal({ usuario, onClose, onEliminar }) {
   // Generar valores aleatorios para los datos
   const presionBoton = generarNumeroAleatorio(1, 100);
   const numeroNotificaciones = generarNumeroAleatorio(0, 50);
@@ -21,10 +19,31 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
   const eva911 = generarNumeroAleatorio(0, 50);
   const innecesarias = generarNumeroAleatorio(0, 20);
 
+  const [mostrarAlerta, setMostrarAlerta] = useState(false);
+
   // Manejo de confirmación de eliminación
   const confirmarEliminacion = () => {
-    setMostrarAlerta(false); // Cerrar la alerta flotante
-    alert("El informe ha sido eliminado."); // Mostrar mensaje de eliminación
+    Swal.fire({
+      title: "¿Desea eliminar este informe?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onEliminar(usuario.id);
+        Swal.fire({
+          icon: "success",
+          title: "Eliminado",
+          text: "El informe ha sido eliminado.",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+      }
+    });
   };
 
   return (
@@ -34,24 +53,29 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
       role="dialog"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }} // Fondo oscuro para el modal
     >
-      <div
-        className="modal-dialog modal-lg"
-        style={{ maxWidth: "1100px" }} // Aumentar el tamaño del cuadro del modal
-        role="document"
-      >
-        <div className="modal-content">
+      <div className="modal-dialog" style={{ maxWidth: 600 }} role="document">
+        <div
+          className="modal-content"
+          style={{
+            border: "none",
+            borderRadius: "16px",
+            boxShadow: "0 4px 24px #00000022",
+          }}
+        >
           {/* Header */}
-          <div className="modal-header bg-dark text-white border-0">
-            <h5
+          <div
+            className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start"
+            style={{ padding: "15px" }}
+          >
+             <h5
               className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "14px" }}
+              style={{ maxWidth: "100%", fontSize: "16px" }}
             >
-              Respuesta del Usuario:{" "}
-              <strong>{usuario.nombre}</strong>
+              Respuesta del Usuario: <strong>{usuario.nombre}</strong>
             </h5>
             <button
               type="button"
-              className="btn-close btn-close-white"
+              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
               aria-label="Close"
               onClick={onClose} // Función para cerrar el modal
             ></button>
@@ -59,57 +83,75 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
 
           {/* Body */}
           <div className="modal-body bg-white">
-            {/* Imagen del Usuario */}
-            <div className="text-center mb-4">
+            <div className="text-center mb-3">
               <img
-                src={`${BASE_IMG_URL}${usuario.imagen}`}
+                src={`${BASE_IMG_URL}respuesta.jpg`}
                 alt={`Imagen de ${usuario.nombre}`}
                 className="rounded-circle shadow"
                 style={{
-                  objectFit: "cover", // Asegura que la imagen cubra el círculo completamente
-                  width: "250px", // Mayor tamaño de la imagen
-                  height: "250px", // Mayor tamaño de la imagen
+                  width: "90px",
+                  height: "90px",
+                  objectFit: "cover",
+                  border: "3px solid #e0e0e0",
                 }}
                 loading="lazy" // Cargar la imagen de manera diferida
               />
             </div>
-
-            {/* Contenedor de datos en filas */}
-            <div className="d-flex flex-column align-items-center">
-              {/* Fila de ID */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">ID:</div>
-                <div>{usuario.id}</div>
+            <h4 className="text-center fw-bold mb-3" style={{ fontSize: "1.08rem" }}>{usuario.nombre}</h4>
+            <div className="row g-2 mb-2">
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>ID:</div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{usuario.id}</div>
+                </div>
               </div>
-              {/* Fila de Presión del Botón */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Presión del Botón:</div>
-                <div>{presionBoton}</div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-hand-pointer me-2 text-primary"></i>Presión del Botón:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{presionBoton}</div>
+                </div>
               </div>
-              {/* Fila de Número de Notificaciones */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Número de Notificaciones:</div>
-                <div>{numeroNotificaciones}</div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-bell me-2 text-warning"></i>Notificaciones:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{numeroNotificaciones}</div>
+                </div>
               </div>
-              {/* Fila de Número de Respuestas */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Número de Respuestas:</div>
-                <div>{numeroRespuestas}</div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-reply me-2 text-success"></i>Respuestas:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{numeroRespuestas}</div>
+                </div>
               </div>
-              {/* Fila de Evaluación SOS */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Evaluaciones SOS:</div>
-                <div>{evaSOS}</div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-shield-alt me-2 text-info"></i>Eval. SOS:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{evaSOS}</div>
+                </div>
               </div>
-              {/* Fila de Evaluación 911 */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Evaluaciones 911:</div>
-                <div>{eva911}</div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-phone-alt me-2 text-secondary"></i>Eval. 911:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{eva911}</div>
+                </div>
               </div>
-              {/* Fila de Respuestas Innecesarias */}
-              <div className="d-flex justify-content-between w-75 mb-3">
-                <div className="fw-bold">Respuestas Innecesarias:</div>
-                <div>{innecesarias}</div>
+              <div className="col-12">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-times-circle me-2 text-danger"></i>Innecesarias:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{innecesarias}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -119,8 +161,8 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
             {/* Botón Eliminar */}
             <button
               className="btn btn-danger"
-              onClick={() => setMostrarAlerta(true)} // Mostrar la alerta de eliminación
-              style={{ fontSize: "16px" }}
+              onClick={confirmarEliminacion}
+              style={{ fontSize: "15px" }}
             >
               <i className="fas fa-trash me-1"></i> Eliminar
             </button>
@@ -130,30 +172,7 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
 
       {/* Alerta flotante para confirmar eliminación */}
       {mostrarAlerta && (
-        <div
-          className="position-fixed top-50 start-50 translate-middle bg-white border rounded shadow-lg p-4"
-          style={{ zIndex: 1055, width: "300px" }} // Ubicar la alerta en el centro
-        >
-          <p className="text-center fw-bold">
-            ¿Desea eliminar este informe?
-          </p>
-          <div className="d-flex justify-content-between">
-            {/* Botón para cancelar la eliminación */}
-            <button
-              className="btn btn-secondary"
-              onClick={() => setMostrarAlerta(false)} // Cerrar la alerta sin eliminar
-            >
-              Cancelar
-            </button>
-            {/* Botón para confirmar la eliminación */}
-            <button
-              className="btn btn-danger"
-              onClick={confirmarEliminacion} // Eliminar el informe y cerrar la alerta
-            >
-              Eliminar
-            </button>
-          </div>
-        </div>
+        <></>
       )}
     </div>
   );
@@ -162,11 +181,12 @@ function RespuestaDeUsuarioModal({ usuario, onClose }) {
 // Validación de las propiedades que recibe el componente
 RespuestaDeUsuarioModal.propTypes = {
   usuario: PropTypes.shape({
-    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired, // ID
-    nombre: PropTypes.string.isRequired, // Nombre del usuario
-    imagen: PropTypes.string.isRequired, // Imagen del usuario
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    nombre: PropTypes.string.isRequired,
+    imagen: PropTypes.string,
   }).isRequired,
-  onClose: PropTypes.func.isRequired, // Función para cerrar el modal
+  onClose: PropTypes.func.isRequired,
+  onEliminar: PropTypes.func.isRequired,
 };
 
 export default RespuestaDeUsuarioModal;

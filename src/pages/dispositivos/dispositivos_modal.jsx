@@ -6,15 +6,41 @@ import PropTypes from "prop-types";
 // Componente modal para mostrar información de un dispositivo
 function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
   const handleDelete = () => {
-    if (window.confirm("¿Estás seguro de que quieres eliminar este dispositivo?")) {
-      onDelete(dispositivo.id); // Llama a la función de eliminación
+    if (window.Swal) {
+      window.Swal.fire({
+        title: "¿Desea eliminar este dispositivo?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Eliminar",
+        cancelButtonText: "Cancelar",
+        reverseButtons: true,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          onDelete(dispositivo.id);
+          window.Swal.fire({
+            icon: "success",
+            title: "Eliminado",
+            text: "El dispositivo ha sido eliminado.",
+            timer: 1200,
+            showConfirmButton: false,
+          });
+          onClose();
+        }
+      });
+    } else {
+      // Fallback si SweetAlert2 no está disponible
+      if (window.confirm("¿Desea eliminar este dispositivo?")) {
+        onDelete(dispositivo.id);
+        onClose();
+      }
     }
-    onClose(); // Cierra el modal después de eliminar
   };
 
   const handleEdit = () => {
-    onEdit(dispositivo); // Llama a la función de edición
-    onClose(); // Cierra el modal después de editar
+    onEdit(dispositivo);
+    onClose();
   };
 
   return (
@@ -37,70 +63,119 @@ function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
     >
       <div
         className="modal-dialog"
-        style={{
-          maxWidth: "850px", // Ancho máximo
-          border: "none",
-          boxShadow: "none",
-        }}
+        style={{ maxWidth: "600px", border: "none", boxShadow: "none" }}
         role="document"
       >
         <div
           className="modal-content"
           style={{
             border: "none",
-            boxShadow: "none",
+            borderRadius: "16px",
+            boxShadow: "0 4px 24px #00000022",
           }}
         >
           <div
-            className="modal-header bg-dark text-white border-0"
+            className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start"
             style={{ padding: "15px" }}
           >
-            <h5 className="modal-title">
+             <h5
+              className="modal-title text-truncate"
+              style={{ maxWidth: "100%", fontSize: "15px" }}
+            >
               Detalles del Dispositivo: <strong>{dispositivo.nombre}</strong>
             </h5>
             <button
               type="button"
-              className="btn-close btn-close-white"
+              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
               aria-label="Close"
               onClick={onClose}
             ></button>
           </div>
 
-          <div className="modal-body bg-white" style={{ padding: "20px" }}>
-            <table className="table table-borderless">
-              <tbody>
-                <tr>
-                  <th style={{ textAlign: "left", width: "35%" }}>ID:</th>
-                  <td style={{ textAlign: "left" }}>{dispositivo.id}</td>
-                </tr>
-                <tr>
-                  <th style={{ textAlign: "left", width: "35%" }}>ID Cliente:</th>
-                  <td style={{ textAlign: "left" }}>{dispositivo.clienteId}</td>
-                </tr>
-                <tr>
-                  <th style={{ textAlign: "left", width: "35%" }}>Dispositivo:</th>
-                  <td style={{ textAlign: "left" }}>{dispositivo.nombre}</td>
-                </tr>
-                <tr>
-                  <th style={{ textAlign: "left", width: "35%" }}>Tipo:</th>
-                  <td style={{ textAlign: "left" }}>{dispositivo.tipoDispositivo}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="modal-body bg-white">
+            <div className="text-center mb-3">
+              <i className="fas fa-mobile-alt fa-3x text-primary mb-2"></i>
+            </div>
+            <div className="row g-2 mb-2 justify-content-center">
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
+                  {/* Sin ícono */}
+                  <div>
+                    <div
+                      className="text-muted mb-1"
+                      style={{ fontSize: ".98rem", fontWeight: 600 }}
+                    >
+                      ID:
+                    </div>
+                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
+                      {dispositivo.id}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
+                  {/* Sin ícono */}
+                  <div>
+                    <div
+                      className="text-muted mb-1"
+                      style={{ fontSize: ".98rem", fontWeight: 600 }}
+                    >
+                      ID Cliente:
+                    </div>
+                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
+                      {dispositivo.clienteId}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <i className="fas fa-mobile-alt text-primary"></i>
+                  <div>
+                    <div
+                      className="text-muted mb-1"
+                      style={{ fontSize: ".98rem", fontWeight: 600 }}
+                    >
+                      Dispositivo:
+                    </div>
+                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
+                      {dispositivo.nombre}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <i className="fas fa-microchip text-secondary"></i>
+                  <div>
+                    <div
+                      className="text-muted mb-1"
+                      style={{ fontSize: ".98rem", fontWeight: 600 }}
+                    >
+                      Tipo:
+                    </div>
+                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
+                      {dispositivo.tipoDispositivo}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="modal-footer bg-light d-flex justify-content-center">
+          <div className="modal-footer bg-light justify-content-center">
             <button
-              className="btn btn-primary me-2"
+              className="btn btn-primary d-flex align-items-center gap-1 me-2"
               onClick={handleEdit}
             >
-              Editar Dispositivo
+              <i className="fas fa-edit"></i> Editar Dispositivo
             </button>
             <button
-              className="btn btn-danger me-2"
+              className="btn btn-danger d-flex align-items-center gap-1"
               onClick={handleDelete}
             >
-              Eliminar Dispositivo
+              <i className="fas fa-trash"></i> Eliminar Dispositivo
             </button>
           </div>
         </div>

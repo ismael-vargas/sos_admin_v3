@@ -2,6 +2,7 @@
 /* -------------------*/
 import React from "react";
 import PropTypes from "prop-types";
+import Swal from "sweetalert2";
 
 // Lista de ubicaciones de ejemplo en Quito
 const ubicacionesQuito = [
@@ -47,79 +48,142 @@ const obtenerMarcaTiempoAleatoria = () => {
  * @param {Function} props.onClose - Función para cerrar el modal.
  */
 function BotonModal({ usuario, onClose }) {
-  const ubicacionAleatoria = obtenerUbicacionAleatoria(); // Obtener ubicación aleatoria
-  const marcaTiempoAleatoria = obtenerMarcaTiempoAleatoria(); // Obtener marca de tiempo aleatoria
+  const ubicacionAleatoria = obtenerUbicacionAleatoria();
+  const marcaTiempoAleatoria = obtenerMarcaTiempoAleatoria();
+
+  const handleEliminar = () => {
+    Swal.fire({
+      title: "¿Desea eliminar este registro?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          icon: "success",
+          title: "Eliminado",
+          text: "El registro ha sido eliminado.",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+        onClose();
+      }
+    });
+  };
 
   return (
     <div
       className="modal fade show d-flex justify-content-center align-items-center"
       tabIndex="-1"
       role="dialog"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }} // Fondo oscuro semitransparente
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}
     >
-      <div
-        className="modal-dialog modal-xl"
-        style={{ maxWidth: "960px" }} // Tamaño del modal
-        role="document"
-      >
-        <div className="modal-content">
-          {/* Cabecera del modal */}
-          <div className="modal-header bg-dark text-white border-0">
-            <h5
-              className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "14px" }}
-            >
-              Detalles del Uso del Botón de Emergencia: <strong>{usuario.nombre}</strong>
+      <div className="modal-dialog" style={{ maxWidth: 500 }} role="document">
+        <div
+          className="modal-content"
+          style={{
+            border: "none",
+            borderRadius: "16px",
+            boxShadow: "0 4px 24px #00000022",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start"
+            style={{ padding: "15px" }}
+          >
+            <h5 className="modal-title" style={{ fontSize: "15px" }}>
+              Informe botón de Emergencia:{" "}
+              <strong>{usuario.nombre}</strong>
             </h5>
-            {/* Botón para cerrar el modal */}
             <button
               type="button"
-              className="btn-close btn-close-white"
+              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
               aria-label="Close"
               onClick={onClose}
             ></button>
           </div>
 
-          {/* Cuerpo del modal */}
+          {/* Body */}
           <div className="modal-body bg-white">
-            {/* Información del usuario en filas */}
-            <div
-              className="d-flex flex-column gap-3"
-              style={{
-                fontSize: "15px",
-                paddingLeft: "20px", // Asegura que todo quede alineado a la izquierda
-              }}
+            <div className="text-center mb-3">
+              <img
+                src="/assets/img/boton.jpg"
+                alt="Botón de emergencia"
+                className="rounded-circle shadow"
+                style={{
+                  width: "90px",
+                  height: "90px",
+                  objectFit: "cover",
+                  border: "3px solid #e0e0e0",
+                }}
+                loading="lazy"
+              />
+            </div>
+            <h4
+              className="text-center fw-bold mb-3"
+              style={{ fontSize: "1.08rem" }}
             >
-              {/* Cada fila contiene una etiqueta y su valor */}
-              <div className="d-flex">
-                <strong className="me-3">ID:</strong> {/* Etiqueta */}
-                <span>{usuario.id}</span> {/* Valor */}
+              {usuario.nombre}
+            </h4>
+            <div className="row g-2 mb-2">
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div
+                    className="text-muted mb-1"
+                    style={{ fontSize: ".98rem", fontWeight: 600 }}
+                  >
+                    ID:
+                  </div>
+                  <div
+                    className="fw-semibold"
+                    style={{ fontSize: ".98rem" }}
+                  >
+                    {usuario.id}
+                  </div>
+                </div>
               </div>
-              <div className="d-flex">
-                <strong className="me-3">Cliente:</strong> {/* Etiqueta */}
-                <span>{usuario.nombre}</span> {/* Valor */}
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <div
+                    className="text-muted mb-1 d-flex align-items-center"
+                    style={{ fontSize: ".98rem", fontWeight: 600 }}
+                  >
+                    <i className="fas fa-map-marker-alt text-danger me-2"></i>
+                    Ubicación:
+                  </div>
+                  <div
+                    className="fw-semibold"
+                    style={{ fontSize: ".98rem" }}
+                  >
+                    {ubicacionAleatoria}
+                  </div>
+                </div>
               </div>
-              <div className="d-flex">
-                <strong className="me-3">Ubicación:</strong> {/* Etiqueta */}
-                <span>{ubicacionAleatoria}</span> {/* Valor */}
-              </div>
-              <div className="d-flex">
-                <strong className="me-3">Marca de Tiempo:</strong> {/* Etiqueta */}
-                <span>{marcaTiempoAleatoria}</span> {/* Valor */}
+              <div className="col-12">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex flex-column align-items-center justify-content-center">
+                  <div className="text-muted mb-1 d-flex align-items-center justify-content-center w-100" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="far fa-clock text-primary me-2"></i>
+                    Marca de Tiempo:
+                  </div>
+                  <div className="fw-semibold text-center w-100" style={{ fontSize: ".98rem" }}>
+                    {marcaTiempoAleatoria}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Pie de página del modal */}
+          {/* Footer */}
           <div className="modal-footer bg-light justify-content-center">
-            {/* Botón de eliminación */}
             <button
               className="btn btn-danger"
-              onClick={() => {
-                console.log("Eliminando al usuario", usuario.id); // Simula la eliminación del usuario
-                onClose(); // Cierra el modal
-              }}
-              style={{ fontSize: "16px" }}
+              onClick={handleEliminar}
+              style={{ fontSize: "15px" }}
             >
               <i className="fas fa-trash me-1"></i> Eliminar
             </button>

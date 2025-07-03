@@ -6,7 +6,7 @@ import Swal from "sweetalert2";
 import axios from "axios";
 
 // Componente modal para mostrar información detallada del rol
-function RolModal({ rol, onClose, onSave }) {
+function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
   const [nombreRol, setNombreRol] = useState(rol.nombre); // Estado para editar el nombre del rol
   const [editandoRol, setEditandoRol] = useState(false); // Estado para gestionar el modo de edición
 
@@ -17,41 +17,42 @@ function RolModal({ rol, onClose, onSave }) {
 
   // Función para guardar los cambios
   const handleSave = async () => {
-  const rolEditado = { ...rol, nombre: nombreRol };
-  
-  // Cerrar modal inmediatamente
-  setEditandoRol(false);
-  cerrarModal();
-  
-  try {
-    // Mostrar carga mientras se actualiza
-    Swal.fire({
-      title: 'Guardando...',
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
+    // Asigna el usuario logeado automáticamente al guardar
+    const rolEditado = { ...rol, nombre: nombreRol, usuarioId: usuarioLogeado?.id };
+    
+    // Cerrar modal inmediatamente
+    setEditandoRol(false);
+    cerrarModal();
+    
+    try {
+      // Mostrar carga mientras se actualiza
+      Swal.fire({
+        title: 'Guardando...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
 
-    // Llamar a onSave (que ahora es optimista)
-    onSave(rolEditado);
+      // Llamar a onSave (que ahora es optimista)
+      onSave(rolEditado);
 
-    // Llamada al backend
-    await axios.put(`http://localhost:9000/roles/${rol.id}`, rolEditado, {
-      headers: { "CSRF-Token": localStorage.getItem("csrfToken") },
-      withCredentials: true
-    });
+      // Llamada al backend
+      await axios.put(`http://localhost:9000/roles/${rol.id}`, rolEditado, {
+        headers: { "CSRF-Token": localStorage.getItem("csrfToken") },
+        withCredentials: true
+      });
 
-    Swal.fire({
-      icon: "success",
-      title: "¡Actualizado el Rol con Exito!",
-      text: "El rol se ha editado correctamente.",
-      timer: 1500,
-      showConfirmButton: false
-    });
+      Swal.fire({
+        icon: "success",
+        title: "¡Actualizado el Rol con Exito!",
+        text: "El rol se ha editado correctamente.",
+        timer: 1500,
+        showConfirmButton: false
+      });
 
-  } catch (error) {
-    Swal.fire("Error", "No se pudo guardar", "error");
-  }
-};
+    } catch (error) {
+      Swal.fire("Error", "No se pudo guardar", "error");
+    }
+  };
 
   return (
     <div
@@ -81,7 +82,7 @@ function RolModal({ rol, onClose, onSave }) {
             <h5
               className="modal-title"
               style={{
-                fontSize: "16px",
+                fontSize: "15px",
                 fontWeight: "bold",
               }}
             >
@@ -126,6 +127,7 @@ function RolModal({ rol, onClose, onSave }) {
                     )}
                   </td>
                 </tr>
+                {/* El ID del usuario logeado NO se muestra ni se edita */}
               </tbody>
             </table>
           </div>
@@ -134,14 +136,14 @@ function RolModal({ rol, onClose, onSave }) {
           <div className="modal-footer bg-light d-flex justify-content-center">
             {!editandoRol ? (
               <button
-                className="btn btn-primary me-2"
+                className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
                 onClick={() => setEditandoRol(true)}
               >
-                Editar Rol
+                <i className="fas fa-edit me-2"></i> Editar Rol
               </button>
             ) : (
-              <button className="btn btn-primary me-2" onClick={handleSave}>
-                Guardar Rol
+              <button className="btn btn-primary me-2 d-flex align-items-center justify-content-center" onClick={handleSave}>
+                <i className="fas fa-save me-2"></i> Guardar Rol
               </button>
             )}
           </div>
@@ -159,6 +161,10 @@ RolModal.propTypes = {
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
+  usuarioLogeado: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    nombre: PropTypes.string,
+  }),
 };
 
 export default RolModal;

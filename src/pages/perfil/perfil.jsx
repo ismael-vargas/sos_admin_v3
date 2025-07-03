@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'; // Importa React y los hooks useState y useEffect para manejar estados y efectos secundarios.
 import { Link } from "react-router-dom"; // Importa Link para la navegación entre rutas.
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx"; // Importa componentes personalizados para el panel.
-import { User, Mail, MapPin, Camera, Edit2, Save, X } from 'lucide-react'; // Importa iconos de lucide-react para usarlos en la interfaz.
+import { User, Mail, MapPin, Camera, Edit2, Save, X, IdCard } from 'lucide-react'; // Agregar IdCard
 import axios from 'axios'; // Importa axios para realizar solicitudes HTTP.
 import Swal from 'sweetalert2'; // Importa SweetAlert2 para mostrar alertas estilizadas.
 import "../../assets/scss/perfil.scss"; // Importa el archivo de estilos SCSS para este componente.
@@ -15,6 +15,9 @@ const Perfil = () => {
   const [profile, setProfile] = useState(null);
   // Estado temporal para manejar los datos del formulario de edición.
   const [tempProfile, setTempProfile] = useState(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({ nuevaContrasena: '' });
+  const [showPasswordInput, setShowPasswordInput] = useState(false); // --- AGREGAR ESTADO PARA MOSTRAR INPUT DE CONTRASEÑA ---
 
   // Obtener los datos del usuario que ha iniciado sesión
   useEffect(() => {
@@ -90,20 +93,28 @@ const Perfil = () => {
     setIsEditing(false); // Sal del modo de edición.
   };
 
-  // Renderiza la imagen o un placeholder si no hay una imagen de perfil
+  // Función para obtener las iniciales del nombre del usuario
+  const getInitials = (nombre) => {
+    if (!nombre) return '';
+    const words = nombre.trim().split(' ');
+    if (words.length === 1) return words[0][0].toUpperCase();
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  };
+
+  // Renderiza la imagen o las iniciales si no hay imagen de perfil
   const renderProfileImage = () => {
     if (profile?.avatar) {
       return (
         <img
-          src={profile.avatar} // Muestra la imagen de perfil.
-          alt="Profile" // Texto alternativo.
-          className="rounded-circle shadow profile-image" // Clases para estilos.
+          src={profile.avatar}
+          alt="Profile"
+          className="rounded-circle shadow profile-image"
         />
       );
     } else {
       return (
-        <div className="rounded-circle shadow profile-placeholder d-flex align-items-center justify-content-center">
-          <i className="fa fa-user fa-4x text-white"></i> {/* Ícono de usuario. */}
+        <div className="rounded-circle shadow profile-placeholder d-flex align-items-center justify-content-center avatar-initials">
+          <span>{getInitials(profile?.nombre)}</span>
         </div>
       );
     }
@@ -114,6 +125,53 @@ const Perfil = () => {
     infoCard: {
       transition: "transform 0.3s ease-in-out", // Transición suave para animación.
       cursor: "pointer" // Cambia el cursor al pasar el mouse.
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (!passwordData.nuevaContrasena || passwordData.nuevaContrasena.length < 6) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Contraseña muy corta',
+        text: 'La contraseña debe tener al menos 6 caracteres.'
+      });
+      return;
+    }
+    try {
+      const usuarioId = profile?.id || localStorage.getItem("usuario_id");
+      const response = await axios.put(
+        `http://localhost:9000/usuarios/${usuarioId}`,
+        { contrasena: passwordData.nuevaContrasena },
+        {
+          headers: { "CSRF-Token": csrfToken },
+          withCredentials: true
+        }
+      );
+      if (response.status === 200) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Contraseña actualizada',
+          text: 'Tu contraseña ha sido cambiada correctamente.',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setShowPasswordInput(false);
+        setPasswordData({ nuevaContrasena: '' });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: response.data?.message || 'No se pudo actualizar la contraseña.'
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: error.response?.data?.message || 'Error al actualizar la contraseña.'
+      });
     }
   };
 
@@ -139,35 +197,35 @@ const Perfil = () => {
             <div className="row justify-content-center"> {/* Alinea contenido al centro. */}
               <div className="col-12 col-lg-8"> {/* Define el tamaño del contenedor. */}
                 <div className="card border-0"> {/* Tarjeta para diseño limpio. */}
-                  <div className="profile-header position-relative text-center"> {/* Sección superior del perfil. */}
-                    <div className="position-relative d-inline-block"> {/* Contenedor de la imagen del perfil. */}
-                      {!isEditing && ( // Si no se está editando, muestra el botón de editar.
+                  <div className="profile-header position-relative text-center mb-0 pb-0"> {/* Header con degradado y avatar centrado */}
+                    <div className="position-relative d-inline-block">
+                      {!isEditing && (
                         <button
                           className="btn btn-light rounded-circle p-2 position-absolute top-0 end-0 shadow-sm"
-                          onClick={() => setIsEditing(true)} // Activa el modo de edición.
+                          onClick={() => setIsEditing(true)}
                         >
-                          <Edit2 size={20} className="text-primary" /> {/* Ícono de editar. */}
+                          <Edit2 size={20} className="text-primary" />
                         </button>
                       )}
-                      {renderProfileImage()} {/* Muestra la imagen o el placeholder. */}
-                      {isEditing && ( // Si se está editando, muestra el botón para cambiar foto.
+                      {renderProfileImage()}
+                      {isEditing && (
                         <button className="btn btn-primary rounded-circle p-2 position-absolute bottom-0 end-0">
-                          <Camera size={20} /> {/* Ícono de cámara. */}
+                          <Camera size={20} />
                         </button>
                       )}
                     </div>
-                    <h3 className="text-white mt-3">
-                      {profile?.nombre} {/* Nombre completo del usuario. */}
+                    <h3 className="text-white mt-3 mb-1">
+                      {profile?.nombre}
                     </h3>
-                    <p className="text-white-50">ID: {profile?.cedula_identidad}</p> {/* Cédula del usuario. */}
+                    <p className="text-white-50 mb-2">ID: {profile?.cedula_identidad}</p>
                   </div>
 
-                  <div className="card-body"> {/* Cuerpo de la tarjeta. */}
-                    {isEditing ? ( // Si se está editando, muestra el formulario.
+                  <div className="card-body perfil-cards-container"> {/* Contenedor de tarjetas en dos columnas */}
+                    {isEditing ? (
                       <form onSubmit={handleSubmit}>
                         <div className="row g-3"> {/* Define el diseño del formulario. */}
                           {/* Campos del formulario */}
-                          <div className="col-md-6"> {/* Campo para el nombre. */}
+                          <div className="col-md-6">
                             <div className="form-group">
                               <label>Nombres *</label>
                               <input
@@ -180,7 +238,7 @@ const Perfil = () => {
                               />
                             </div>
                           </div>
-                          <div className="col-md-6"> {/* Campo para la cédula. */}
+                          <div className="col-md-6">
                             <div className="form-group">
                               <label>Cédula *</label>
                               <input
@@ -193,7 +251,7 @@ const Perfil = () => {
                               />
                             </div>
                           </div>
-                          <div className="col-md-6"> {/* Campo para el correo electrónico. */}
+                          <div className="col-md-6">
                             <div className="form-group">
                               <label>Correo Electrónico *</label>
                               <input
@@ -206,7 +264,7 @@ const Perfil = () => {
                               />
                             </div>
                           </div>
-                          <div className="col-12"> {/* Campo para la dirección. */}
+                          <div className="col-12">
                             <div className="form-group">
                               <label>Dirección *</label>
                               <input
@@ -216,18 +274,6 @@ const Perfil = () => {
                                 value={tempProfile?.direccion || ''}
                                 onChange={handleInputChange}
                                 required
-                              />
-                            </div>
-                          </div>
-                          <div className="col-md-6"> {/* Campo para cambiar la contraseña. */}
-                            <div className="form-group">
-                              <label>Nueva Contraseña</label>
-                              <input
-                                type="password"
-                                className="form-control"
-                                name="contrasena" // Nombre del campo que se enviará al backend
-                                value={tempProfile?.contrasena || ''} // Valor temporal para la contraseña
-                                onChange={handleInputChange} // Maneja los cambios en el campo
                               />
                             </div>
                           </div>
@@ -249,53 +295,100 @@ const Perfil = () => {
                           </div>
                         </div>
                       </form>
-                    ) : ( // Si no se está editando, muestra la información en tarjetas.
-                      <div>
-                        {[ // Información del perfil renderizada en tarjetas.
-                          {
-                            icon: User,
-                            label: "Nombres",
-                            value: profile?.nombre
-                          },
-                          {
-                            icon: User,
-                            label: "Cédula",
-                            value: profile?.cedula_identidad
-                          },
-                          {
-                            icon: Mail,
-                            label: "Correo Electrónico",
-                            value: profile?.correo_electronico
-                          },
-                          {
-                            icon: MapPin,
-                            label: "Dirección",
-                            value: profile?.direccion
-                          },
-                        ].map((item, index) => ( // Recorre y renderiza cada tarjeta de información.
-                          <div
-                            key={index}
-                            style={customStyles.infoCard} // Aplica estilos personalizados.
-                            onMouseOver={(e) =>
-                              (e.currentTarget.style.transform = "translateX(5px)") // Animación al pasar el mouse.
-                            }
-                            onMouseOut={(e) =>
-                              (e.currentTarget.style.transform = "translateX(0)") // Regresa a su posición original.
-                            }
-                            className="info-card d-flex align-items-center border rounded mb-2 p-3"
-                          >
-                            <div className="info-card-icon flex-shrink-0 me-3">
-                              <item.icon size={20} className="text-primary" /> {/* Ícono. */}
-                            </div>
-                            <div className="info-card-content text-truncate">
-                              <div className="info-card-label text-muted text-truncate">
-                                {item.label} {/* Etiqueta. */}
+                    ) : (
+                      <>
+                        <div className="perfil-cards-list row g-4 justify-content-center">
+                          <div className="col-12 col-md-6 d-flex flex-column gap-3">
+                            {/* Columna izquierda: Nombres y Cédula */}
+                            <div className="info-card d-flex align-items-center p-3">
+                              <div className="info-card-icon flex-shrink-0 me-3">
+                                <User size={22} className="text-primary" />
                               </div>
-                              <div className="info-card-text text-truncate">{item.value}</div> {/* Valor. */}
+                              <div className="info-card-content text-truncate">
+                                <div className="info-card-label text-muted text-truncate">
+                                  Nombres
+                                </div>
+                                <div className="info-card-text text-truncate fw-normal">{profile?.nombre}</div>
+                              </div>
+                            </div>
+                            <div className="info-card d-flex align-items-center p-3">
+                              <div className="info-card-icon flex-shrink-0 me-3">
+                                <IdCard size={22} className="text-primary" />
+                              </div>
+                              <div className="info-card-content text-truncate">
+                                <div className="info-card-label text-muted text-truncate">
+                                  Cédula
+                                </div>
+                                <div className="info-card-text text-truncate fw-normal">{profile?.cedula_identidad}</div>
+                              </div>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                          <div className="col-12 col-md-6 d-flex flex-column gap-3">
+                            {/* Columna derecha: Correo y Dirección SIEMPRE ARRIBA */}
+                            <div className="info-card d-flex align-items-center p-3">
+                              <div className="info-card-icon flex-shrink-0 me-3">
+                                <Mail size={22} className="text-primary" />
+                              </div>
+                              <div className="info-card-content text-truncate">
+                                <div className="info-card-label text-muted text-truncate">
+                                  Correo Electrónico
+                                </div>
+                                <div className="info-card-text text-truncate fw-normal">{profile?.correo_electronico}</div>
+                              </div>
+                            </div>
+                            <div className="info-card d-flex align-items-center p-3">
+                              <div className="info-card-icon flex-shrink-0 me-3">
+                                <MapPin size={22} className="text-primary" />
+                              </div>
+                              <div className="info-card-content text-truncate">
+                                <div className="info-card-label text-muted text-truncate">
+                                  Dirección
+                                </div>
+                                <div className="info-card-text text-truncate fw-normal">{profile?.direccion}</div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Tarjeta de configuración de contraseña DEBAJO DE LAS DOS COLUMNAS */}
+                        <div className="col-12 col-md-6 mt-4 password-card-col">
+                            <div className="info-card password-card mb-0 d-flex flex-column align-items-center text-center p-4">
+                              <span className="info-card-icon mb-2"><i className="bi bi-lock-fill text-primary" style={{fontSize: '1.7rem'}}></i></span>
+                              <span className="fw-semibold mb-1" style={{fontSize: '1.15rem'}}>Contraseña</span>
+                              <span className="info-card-text text-muted mb-3" style={{fontSize: '0.98rem'}}>
+                                Actualiza tu contraseña periódicamente para mayor seguridad.
+                              </span>
+                              {!showPasswordInput && (
+                                <button className="btn btn-dark password-btn w-100" type="button" onClick={() => setShowPasswordInput(true)}>
+                                  Cambiar Contraseña
+                                </button>
+                              )}
+                              {showPasswordInput && (
+                                <form className="row g-2 align-items-center password-form-responsive w-100 m-0 mt-3" onSubmit={handlePasswordChange}>
+                                  <div className="col-12">
+                                    <input
+                                      type="password"
+                                      className="form-control"
+                                      name="nuevaContrasena"
+                                      placeholder="Nueva Contraseña"
+                                      value={passwordData.nuevaContrasena}
+                                      onChange={e => setPasswordData({ ...passwordData, nuevaContrasena: e.target.value })}
+                                      required
+                                      minLength={6}
+                                    />
+                                  </div>
+                                  <div className="col-12 d-flex justify-content-end gap-2 mt-2">
+                                    <button type="button" className="btn btn-secondary" onClick={() => { setShowPasswordInput(false); setPasswordData({ nuevaContrasena: '' }); }}>
+                                      Cancelar
+                                    </button>
+                                    <button type="submit" className="btn btn-primary">
+                                      Guardar
+                                    </button>
+                                  </div>
+                                </form>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

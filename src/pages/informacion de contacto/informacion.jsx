@@ -92,6 +92,24 @@ function InformacionContactosUsuarios() {
   const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: "", numero: "", usuario_id: "" });
+  const [usuarioLogeado, setUsuarioLogeado] = useState(null);
+
+  // Obtener usuario logeado (igual que en perfil.jsx)
+  useEffect(() => {
+    const fetchUsuario = async () => {
+      try {
+        const usuarioId = localStorage.getItem("usuario_id");
+        if (!usuarioId) {
+          throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
+        }
+        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
+        setUsuarioLogeado(response.data);
+      } catch (error) {
+        setUsuarioLogeado(null);
+      }
+    };
+    fetchUsuario();
+  }, []);
 
   useEffect(() => {
     const fetchCsrfToken = async () => {
@@ -138,61 +156,62 @@ function InformacionContactosUsuarios() {
 
     fetchInformaciones();
   }, []);
-const handleEliminarInformacion = async () => {
-  const csrfToken = localStorage.getItem("csrfToken");
-
-  try {
-    // Actualizamos el estado local para eliminar las tarjetas inmediatamente
-    setInformaciones((prevInformaciones) =>
-      prevInformaciones.filter((info) => !usuariosSeleccionados.includes(info.id))
-    );
-
-    // Luego hacemos las llamadas al backend
-    for (const id of usuariosSeleccionados) {
-      await axios.put(
-        `http://localhost:9000/usuarios_numeros/${id}`,
-        { estado: "eliminado" },
-        {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
+  const handleEliminarInformacion = async () => {
+    if (usuariosSeleccionados.length === 0) return;
+    const confirm = await Swal.fire({
+      title: '¿Está seguro de eliminar los números seleccionados?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+    if (!confirm.isConfirmed) return;
+    const csrfToken = localStorage.getItem("csrfToken");
+    try {
+      setInformaciones((prevInformaciones) =>
+        prevInformaciones.filter((info) => !usuariosSeleccionados.includes(info.id))
       );
+      for (const id of usuariosSeleccionados) {
+        await axios.put(
+          `http://localhost:9000/usuarios_numeros/${id}`,
+          { estado: "eliminado" },
+          {
+            headers: {
+              "CSRF-Token": csrfToken,
+            },
+            withCredentials: true,
+          }
+        );
+      }
+      setUsuariosSeleccionados([]);
+      Swal.fire({
+        icon: "success",
+        title: "¡Eliminación exitosa!",
+        text: "Los números seleccionados han sido eliminados correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al eliminar la información:", error.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error al eliminar",
+        text: "Hubo un error al eliminar la información. Por favor, inténtelo de nuevo.",
+      });
+      const response = await axios.get("http://localhost:9000/usuarios_numeros", {
+        withCredentials: true,
+      });
+      setInformaciones(response.data);
     }
-
-    setUsuariosSeleccionados([]);
-
-    // Mostrar alerta de eliminación exitosa
-    Swal.fire({
-      icon: "success",
-      title: "¡Eliminación exitosa!",
-      text: "Los números seleccionados han sido eliminados correctamente.",
-      timer: 1500,
-      showConfirmButton: false,
-    });
-  } catch (error) {
-    console.error("Error al eliminar la información:", error.message);
-
-    // Si hay un error, revertimos los cambios en el estado local
-    Swal.fire({
-      icon: "error",
-      title: "Error al eliminar",
-      text: "Hubo un error al eliminar la información. Por favor, inténtelo de nuevo.",
-    });
-
-    // Recuperamos las tarjetas eliminadas en caso de error
-    const response = await axios.get("http://localhost:9000/usuarios_numeros", {
-      withCredentials: true,
-    });
-    setInformaciones(response.data);
-  }
-};
+  };
 
   const handleGuardarNuevoUsuario = async () => {
-    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
-
-    if (!nuevoUsuario.nombre || !nuevoUsuario.numero || !nuevoUsuario.usuario_id) {
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (!nuevoUsuario.nombre || !nuevoUsuario.numero) {
       Swal.fire({
         icon: "warning",
         title: "Campos incompletos",
@@ -200,23 +219,21 @@ const handleEliminarInformacion = async () => {
       });
       return;
     }
-
     try {
       const response = await axios.post(
         "http://localhost:9000/usuarios_numeros",
         {
           nombre: nuevoUsuario.nombre,
           numero: nuevoUsuario.numero,
-          usuario_id: nuevoUsuario.usuario_id,
+          usuario_id: usuarioLogeado?.id,
         },
         {
           headers: {
-            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+            "CSRF-Token": csrfToken,
           },
-          withCredentials: true, // Asegúrate de enviar las cookies
+          withCredentials: true,
         }
       );
-
       setInformaciones((prevInformaciones) => [
         {
           id: response.data.usuarioNumero.id,
@@ -226,10 +243,8 @@ const handleEliminarInformacion = async () => {
         },
         ...prevInformaciones,
       ]);
-
       setNuevoUsuario({ nombre: "", numero: "", usuario_id: "" });
       setMostrarFormulario(false);
-
       Swal.fire({
         icon: "success",
         title: "¡Número agregado!",
@@ -349,30 +364,22 @@ const handleEliminarInformacion = async () => {
                     onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, numero: e.target.value })}
                   />
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">Usuario ID</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoUsuario.usuario_id}
-                    onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, usuario_id: e.target.value })}
-                  />
-                </div>
+                {/* El campo de Usuario ID ya no se muestra */}
               </div>
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-secondary d-flex align-items-center"
                   onClick={() => setMostrarFormulario(false)}
                 >
-                  Cancelar
+                  <i className="fas fa-times me-2"></i> Cancelar
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-primary d-flex align-items-center"
                   onClick={handleGuardarNuevoUsuario}
                 >
-                  Guardar
+                  <i className="fas fa-save me-2"></i> Guardar
                 </button>
               </div>
             </div>

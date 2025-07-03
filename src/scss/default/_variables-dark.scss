@@ -140,8 +140,8 @@ $app-top-menu-control-link-hover-color-dark:         $white !default;
 
 // 9.0  App - Sidebar
 
-$app-sidebar-bg-dark:                                $gray-800 !default;
-$app-sidebar-bg-mobile-backdrop-dark:                rgba($gray-900, .5) !default;
+$app-sidebar-bg-dark: #1D1E22 !default;
+$app-sidebar-component-active-bg-dark: #303238 !default;
 $app-sidebar-component-color-dark:                   $white !default;
 $app-sidebar-component-active-bg-dark:               $gray-900 !default;
 $app-sidebar-component-active-color-dark:            $white !default;

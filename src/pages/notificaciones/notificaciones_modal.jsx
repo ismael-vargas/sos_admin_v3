@@ -2,9 +2,36 @@
 /* -------------------*/
 import React from "react";
 import PropTypes from "prop-types";
+import Swal from "sweetalert2";
 
 // Componente modal para mostrar detalles de una notificación
 function NotificacionModal({ notificacion, onClose, onDelete }) {
+  // Función para confirmar eliminación con SweetAlert
+  const confirmarEliminacion = () => {
+    Swal.fire({
+      title: "¿Desea eliminar esta alerta?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Eliminar",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onDelete();
+        Swal.fire({
+          icon: "success",
+          title: "Eliminado",
+          text: "La alerta ha sido eliminada.",
+          timer: 1200,
+          showConfirmButton: false,
+        });
+        onClose();
+      }
+    });
+  };
+
   return (
     // Modal contenedor centrado en la pantalla con fondo oscuro
     <div
@@ -18,90 +45,76 @@ function NotificacionModal({ notificacion, onClose, onDelete }) {
         alignItems: "center", // Centrado vertical
       }}
     >
-      <div
-        className="modal-dialog"
-        style={{
-          maxWidth: "600px", // Tamaño máximo del modal
-          borderRadius: "0px", // Sin bordes redondeados
-          overflow: "hidden", // Evitar desbordamiento del contenido
-          border: "none", // Sin bordes alrededor del modal
-        }}
-        role="document"
-      >
+      <div className="modal-dialog" style={{ maxWidth: 600 }} role="document">
         <div
           className="modal-content"
           style={{
-            border: "none", // Sin bordes para el contenido
-            boxShadow: "none", // Sin sombras
+            border: "none",
+            borderRadius: "16px",
+            boxShadow: "0 4px 24px #00000022",
           }}
         >
-          {/* Encabezado del modal */}
-          <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
-            <h5
-              className="modal-title"
-              style={{
-                fontSize: "16px", // Tamaño de fuente para el título
-                fontWeight: "bold", // Negrita para el título
-              }}
-            >
+          {/* Header */}
+          <div className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start" style={{ padding: "15px" }}>
+            <h5 className="modal-title text-truncate" style={{ maxWidth: "100%", fontSize: "16px" }}>
               Detalles de Notificación: <strong>{notificacion.presionBotonId}</strong>
             </h5>
             {/* Botón para cerrar el modal */}
             <button
               type="button"
-              className="btn-close btn-close-white"
+              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
               aria-label="Close"
               onClick={onClose} // Llama a la función onClose cuando se hace clic
             ></button>
           </div>
 
-          {/* Cuerpo del modal */}
-          <div className="modal-body bg-white" style={{ padding: "20px" }}>
-            {/* Tabla centrada con filas sin bordes */}
-            <table className="table table-borderless mx-auto" style={{ width: "100%" }}>
-              <tbody>
-                <tr>
-                  {/* Fila con ID */}
-                  <th
-                    style={{
-                      textAlign: "left", // Alineación izquierda para las etiquetas
-                      width: "30%", // Ancho fijo para las etiquetas
-                    }}
-                  >
+          {/* Body */}
+          <div className="modal-body bg-white">
+            <div className="row g-2 mb-2">
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
                     ID:
-                  </th>
-                  <td style={{ textAlign: "left" }}>{notificacion.id}</td>
-                </tr>
-                <tr>
-                  {/* Fila con Presión Botón ID */}
-                  <th style={{ textAlign: "left", width: "30%" }}>Presión Botón ID:</th>
-                  <td style={{ textAlign: "left" }}>{notificacion.presionBotonId}</td>
-                </tr>
-                <tr>
-                  {/* Fila con Cliente Notificado ID */}
-                  <th style={{ textAlign: "left", width: "30%" }}>Cliente Notificado ID:</th>
-                  <td style={{ textAlign: "left" }}>{notificacion.clienteNotificadoId}</td>
-                </tr>
-                <tr>
-                  {/* Fila con Notificaciones Recibidas */}
-                  <th style={{ textAlign: "left", width: "30%" }}>Notificaciones Recibidas:</th>
-                  <td style={{ textAlign: "left" }}>{notificacion.notificacionesRecibidas}</td>
-                </tr>
-              </tbody>
-            </table>
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.id}</div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-hand-pointer me-2 text-primary"></i>Presión Botón ID:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.presionBotonId}</div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-user me-2 text-success"></i>Cliente Notificado ID:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.clienteNotificadoId}</div>
+                </div>
+              </div>
+              <div className="col-12 col-sm-6">
+                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
+                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                    <i className="fas fa-bell me-2 text-warning"></i>Notificaciones Recibidas:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.notificacionesRecibidas}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Footer del modal */}
-          <div className="modal-footer bg-light d-flex justify-content-center">
+          {/* Footer */}
+          <div className="modal-footer bg-light justify-content-center">
             {/* Botón para eliminar la notificación */}
             <button
               className="btn btn-danger"
-              onClick={() => {
-                onDelete(); // Llama a la función onDelete cuando se hace clic
-                onClose(); // Cierra el modal después de eliminar
-              }}
+              onClick={confirmarEliminacion}
+              style={{ fontSize: "15px" }}
             >
-              Eliminar Notificación
+              <i className="fas fa-trash me-1"></i> Eliminar
             </button>
           </div>
         </div>

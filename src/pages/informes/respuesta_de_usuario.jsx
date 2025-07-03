@@ -40,9 +40,9 @@ function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelect
         >
             <div className="card border-0 shadow-sm rounded-3 overflow-hidden">
                 <img
-                    src={`${BASE_IMG_URL}${encodeURIComponent(usuario.imagen)}`} // Sanitizar URL
+                    src={`${BASE_IMG_URL}respuesta.jpg`}
                     className="card-img-top"
-                    alt={`Imagen de ${sanitizeText(usuario.nombre)}`}
+                    alt="Imagen de respuesta"
                     style={{
                         objectFit: "cover",
                         height: "200px",
@@ -78,17 +78,10 @@ function UsuarioCard({ usuario, onVerInformacionClick, onSelectUsuario, isSelect
  */
 function GestionUsuarios() {
     const [usuarios, setUsuarios] = useState([
-        // Lista inicial de usuarios
         { id: 1, nombre: "Ismael Vargas", imagen: "perfil.jpg", eliminado: false },
         { id: 2, nombre: "Juan Pérez", imagen: "foto10.jpg", eliminado: false },
         { id: 3, nombre: "María López", imagen: "foto9.jpg", eliminado: false },
         { id: 4, nombre: "Carlos Gómez", imagen: "foto3.jpg", eliminado: false },
-        { id: 5, nombre: "Ana Ramírez", imagen: "foto2.jpg", eliminado: false },
-        { id: 6, nombre: "Pedro Martínez", imagen: "foto4.jpg", eliminado: false },
-        { id: 7, nombre: "Luz Fernández", imagen: "chica2.jpg", eliminado: false },
-        { id: 8, nombre: "Erika Pozo", imagen: "chica.jpg", eliminado: false },
-        { id: 9, nombre: "Juanita Pérez", imagen: "chica3.jpg", eliminado: false },
-        { id: 10, nombre: "Carlos Rodríguez", imagen: "chica4.jpg", eliminado: false },
     ]);
 
     const [busqueda, setBusqueda] = useState("");
@@ -119,6 +112,12 @@ function GestionUsuarios() {
         setUsuarios(usuariosActualizados);
         setUsuariosSeleccionados([]);
     }, [usuarios, usuariosSeleccionados]);
+
+    // Eliminar usuario desde el modal
+    const handleEliminarUsuario = (id) => {
+        setUsuarios((prev) => prev.filter((u) => u.id !== id));
+        setUsuarioSeleccionado(null);
+    };
 
     const handleSeleccionarUsuario = useCallback(
         (id) => {
@@ -219,7 +218,7 @@ function GestionUsuarios() {
             </Panel>
 
             {usuarioSeleccionado && (
-                <RespuestaDeUsuarioModal usuario={usuarioSeleccionado} onClose={() => setUsuarioSeleccionado(null)} />
+                <RespuestaDeUsuarioModal usuario={usuarioSeleccionado} onClose={() => setUsuarioSeleccionado(null)} onEliminar={handleEliminarUsuario} />
             )}
         </div>
     );

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import axios from "axios";
 import Swal from "sweetalert2"; // Importamos SweetAlert2
+import { FaEnvelope, FaIdCard, FaMapMarkerAlt } from 'react-icons/fa';
+import { FiUser, FiMail, FiCreditCard, FiMapPin } from "react-icons/fi";
 import "../../assets/scss/usuario_modal.scss";
 
 const DEFAULT_IMG = "/assets/img/foto3.jpg"; // Imagen por defecto si no hay imagen definida
@@ -91,7 +93,7 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
         <div className="modal-content">
           {/* Header del modal */}
           <div className="modal-header bg-dark text-white border-0">
-            <h5 className="modal-title" style={{ fontSize: "1.004rem" }}>
+            <h5 className="modal-title" style={{ fontSize: "14px" }}>
               Detalles del Usuario: <strong>{usuario.nombre}</strong>
             </h5>
             <button
@@ -108,50 +110,60 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
                 src={usuario.imagen ? `/assets/img/${usuario.imagen}` : DEFAULT_IMG}
                 alt={`Imagen de ${usuario.nombre}`}
                 className="rounded-circle shadow"
-                style={{ width: "220px", height: "220px", objectFit: "cover" }}
+                style={{ width: "120px", height: "120px", objectFit: "cover", border: "4px solid #e0e0e0" }}
                 loading="lazy"
               />
             </div>
-
-            {/* Detalles */}
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">ID:</div>
-              <div className="col-6">{usuario.id}</div>
+            <h3 className="text-center fw-bold mb-4" style={{ fontSize: "1.18rem" }}>{usuario.nombre}</h3>
+            <div className="row g-3 mb-2">
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
+                  <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                    <FiUser className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> ID:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{usuario.id}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
+                  <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                    <FiMail className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> Correo:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{usuario.correo_electronico || "N/A"}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
+                  <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                    <FiCreditCard className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> Cédula:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{usuario.cedula_identidad || "N/A"}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
+                  <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                    <FiMapPin className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> Dirección:
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{usuario.direccion || "N/A"}</div>
+                </div>
+              </div>
             </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Nombre:</div>
-              <div className="col-6">{usuario.nombre}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Correo:</div>
-              <div className="col-6">{usuario.correo_electronico || "N/A"}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Cédula:</div>
-              <div className="col-6">{usuario.cedula_identidad || "N/A"}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Dirección:</div>
-              <div className="col-6">{usuario.direccion || "N/A"}</div>
-            </div>
-
-            {/* Estado con selector */}
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Estado:</div>
-              <div className="col-6">
+            <div className="row mb-3">
+              <div className="col-12 d-flex justify-content-center">
                 {!editandoEstado ? (
-                  <span className={`badge ${estado === "Activo" ? "bg-success" : "bg-secondary"}`}>
+                  <span className="badge d-flex align-items-center justify-content-center gap-2" style={{ background: "#0891b2", color: "#fff", fontSize: "1.05rem", padding: "10px 32px", borderRadius: "24px", fontWeight: 700, letterSpacing: 1, boxShadow: "0 2px 8px #0891b233", minWidth: 120 }}>
+                    <span style={{ display: "inline-block", width: 14, height: 14, background: "#fff", borderRadius: "50%", marginRight: 6, boxShadow: "0 0 0 2px #0891b2" }}></span>
                     {estado}
                   </span>
                 ) : (
-                  <select className="form-select" value={estado} onChange={handleEstadoChange}>
+                  <select className="form-select w-auto" value={estado} onChange={handleEstadoChange}>
                     <option value="Activo">Activo</option>
                     <option value="Inactivo">Inactivo</option>
                   </select>
                 )}
               </div>
             </div>
-
           </div>
 
           {/* Footer con botones */}

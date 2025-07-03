@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react"; // Import useEffect
 import PropTypes from "prop-types";
 import axios from "axios"; // Import axios
+import Swal from "sweetalert2";
+import { FaPhoneAlt, FaEnvelope, FaIdCard, FaMapMarkerAlt, FaHandsHelping } from 'react-icons/fa'; // Iconos
 
 const BASE_IMG_URL = "/assets/img/"; // URL base para las imágenes del cliente
 
@@ -11,12 +13,14 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
   const [editandoEstado, setEditandoEstado] = useState(false);
   const [isDeletedLocally, setIsDeletedLocally] = useState(cliente.eliminado); // Track deleted state
   const [csrfToken, setCsrfToken] = useState(''); // State for CSRF token
+  const [numerosCliente, setNumerosCliente] = useState([]);
+  const [loadingNumeros, setLoadingNumeros] = useState(true);
 
-  // Fetch CSRF token on component mount
+  // Fetch CSRF token y números de cliente al montar
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        axios.defaults.withCredentials = true; // Ensure cookies are sent
+        axios.defaults.withCredentials = true;
         const response = await axios.get('http://192.168.1.31:9000/csrf-token');
         setCsrfToken(response.data.csrfToken);
       } catch (error) {
@@ -26,6 +30,21 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
     };
     fetchCsrfToken();
   }, []);
+
+  // Obtener los números del cliente
+  useEffect(() => {
+    const fetchNumeros = async () => {
+      setLoadingNumeros(true);
+      try {
+        const res = await axios.get(`http://192.168.1.31:9000/clientes_numeros/cliente/${cliente.id}`);
+        setNumerosCliente(res.data);
+      } catch (err) {
+        setNumerosCliente([]);
+      }
+      setLoadingNumeros(false);
+    };
+    if (cliente.id) fetchNumeros();
+  }, [cliente.id]);
 
   const handleEstadoChange = (e) => setEstadoLocal(e.target.value);
 
@@ -50,27 +69,21 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
   };
 
   const handleEliminarCliente = async () => {
-    if (!window.confirm(`¿Estás seguro de que quieres eliminar a ${cliente.nombre}?`)) {
-      return;
-    }
-
     try {
       const response = await axios.put(
-        `http://192.168.1.31:9000/clientes/${cliente.id}/estado`, // Endpoint to update status
-        { estado_eliminado: 'eliminado' }, // Assuming this field marks deletion
+        `http://192.168.1.31:9000/clientes/${cliente.id}/estado`,
+        { estado_eliminado: 'eliminado' },
         { headers: { 'X-CSRF-Token': csrfToken } }
       );
       if (response.status === 200) {
-        alert("Cliente marcado como eliminado.");
-        setIsDeletedLocally(true); // Update local modal state
-        onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' }); // Update parent state
-        onClose(); // Close the modal
+        setIsDeletedLocally(true);
+        onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' });
+        // No cerrar el modal aquí, para que el usuario vea el mensaje de éxito
       } else {
-        alert("Error al eliminar cliente.");
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar cliente.' });
       }
     } catch (error) {
-      console.error("Error al eliminar cliente:", error.response?.data || error.message);
-      alert("Error al eliminar cliente.");
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar cliente.' });
     }
   };
 
@@ -108,90 +121,110 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
               <img
                 src={`${BASE_IMG_URL}${cliente.imagen || 'default_user.jpg'}`}
                 alt={`Imagen de ${cliente.nombre}`}
-                style={{
-                  objectFit: "cover",
-                  width: "220px",
-                  height: "220px",
-                }}
+                className="rounded-circle shadow"
+                style={{ width: "120px", height: "120px", objectFit: "cover", border: "4px solid #e0e0e0" }}
                 loading="lazy"
               />
             </div>
-
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">ID:</div>
-              <div className="col-6">{cliente.id}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Nombre:</div>
-              <div className="col-6">{cliente.nombre}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Correo:</div>
-              <div className="col-6">{cliente.correo || cliente.correo_electronico || "N/A"}</div>
-            </div>
-            
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Cédula:</div>
-              <div className="col-6">{cliente.cedula || cliente.cedula_identidad || "N/A"}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Dirección:</div>
-              <div className="col-6">{cliente.direccion || "N/A"}</div>
-            </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Estado del Cliente:</div>
-              <div className="col-6">
-                {!editandoEstado ? (
-                  <span className={`badge ${estadoLocal === 'activo' ? 'bg-success' : 'bg-warning'}`}>
-                    {estadoLocal.charAt(0).toUpperCase() + estadoLocal.slice(1)}
-                  </span>
-                ) : (
-                  <select
-                    className="form-select"
-                    value={estadoLocal}
-                    onChange={handleEstadoChange}
-                    style={{ fontSize: "16px" }}
-                  >
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                  </select>
-                )}
+            <h3 className="text-center fw-bold mb-4" style={{ fontSize: "1.18rem" }}>{cliente.nombre}</h3>
+            <div className="row g-3 mb-2">
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem' }} />
+                  <div>
+                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>ID:</div>
+                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.id}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <FaEnvelope style={{ color: '#0891b2', fontSize: '1.25rem' }} />
+                  <div>
+                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Correo:</div>
+                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.correo || cliente.correo_electronico || "N/A"}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem' }} />
+                  <div>
+                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Cédula:</div>
+                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.cedula || cliente.cedula_identidad || "N/A"}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <FaMapMarkerAlt style={{ color: '#f59e42', fontSize: '1.25rem' }} />
+                  <div>
+                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Dirección:</div>
+                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.direccion || "N/A"}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="row mb-2">
-              <div className="col-6 text-end fw-bold">Número de Ayudas:</div>
-              <div className="col-6">{cliente.numero_ayudas || 0}</div>
-            </div>
-            <div className="row mb-2">
-            
-         
+            {/* Número de Ayudas y Números de cliente, ambos centrados y en cuadraditos */}
+            <div className="row mb-2 justify-content-center">
+              <div className="col-12 col-md-6 d-flex flex-column align-items-center mx-auto">
+                <div className="bg-light rounded-3 p-3 mb-2 shadow-sm d-flex align-items-center gap-2 justify-content-center w-100" style={{ minHeight: 60 }}>
+                  <FaHandsHelping style={{ color: '#6366f1', fontSize: '1.25rem' }} />
+                  <span className="text-muted" style={{ fontSize: '1rem', fontWeight: 600 }}>Número de Ayudas:</span>
+                  <span className="fw-bold text-primary" style={{ fontSize: '1.08rem' }}>{cliente.numero_ayudas || 0}</span>
+                </div>
+                {loadingNumeros ? (
+                  <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center" style={{ minHeight: 60 }}>
+                    <span className="text-muted">Cargando números...</span>
+                  </div>
+                ) : (
+                  numerosCliente.length === 0 ? (
+                    <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center" style={{ minHeight: 60 }}>
+                      <span className="text-muted">Sin números</span>
+                    </div>
+                  ) : (
+                    <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center d-flex flex-wrap justify-content-center align-items-center gap-2" style={{ minHeight: 60 }}>
+                      {numerosCliente.map((n, idx) => (
+                        <span key={n.id} className="badge mx-1" style={{ background: '#e0f7fa', color: '#0891b2', fontWeight: 700, fontSize: '1.01rem', border: '1px solid #10b981', borderRadius: 16, padding: '7px 16px' }}>
+                          <span style={{ color: '#6366f1', fontWeight: 700 }}>Número principal:</span> <span style={{ color: '#0891b2', fontWeight: 700 }}>{n.numero}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           </div>
 
           <div className="modal-footer bg-light justify-content-center">
-            {!editandoEstado ? (
-              <button
-                className="btn btn-primary me-2"
-                onClick={() => setEditandoEstado(true)}
-                style={{ fontSize: "16px" }}
-                disabled={isDeletedLocally} // Cannot edit state if deleted
-              >
-                <i className="fas fa-edit me-1"></i> Editar Estado
-              </button>
-            ) : (
-              <button
-                className="btn btn-primary me-2"
-                onClick={guardarEstado}
-                style={{ fontSize: "16px" }}
-              >
-                <i className="fas fa-save me-1"></i> Guardar Estado
-              </button>
-            )}
+            {/* Eliminar botón Editar Estado, solo dejar Eliminar Cliente centrado */}
             <button
-              className="btn btn-danger"
-              onClick={handleEliminarCliente}
-              style={{ fontSize: "16px" }}
-              disabled={isDeletedLocally} // Cannot delete if already deleted
+              className="btn btn-danger d-flex align-items-center justify-content-center"
+              onClick={async () => {
+                const result = await Swal.fire({
+                  title: `¿Eliminar cliente?`,
+                  html: `<b>${cliente.nombre}</b> será eliminado. Esta acción no se puede deshacer.`,
+                  icon: "warning",
+                  showCancelButton: true,
+                  confirmButtonColor: "#d33",
+                  cancelButtonColor: "#3085d6",
+                  confirmButtonText: "Sí, eliminar",
+                  cancelButtonText: "Cancelar"
+                });
+                if (result.isConfirmed) {
+                  await handleEliminarCliente();
+                  await Swal.fire({
+                    icon: "success",
+                    title: "Cliente Eliminado",
+                    text: `El cliente ha sido eliminado correctamente.`,
+                    timer: 1200,
+                    showConfirmButton: false
+                  });
+                  onClose(); // Ahora sí cerramos el modal después del mensaje de éxito
+                }
+              }}
+              style={{ fontSize: "1.08rem", padding: "10px 32px", borderRadius: "24px" }}
+              disabled={isDeletedLocally}
             >
               <i className="fas fa-trash-alt me-1"></i> {isDeletedLocally ? 'Cliente Eliminado' : 'Eliminar Cliente'}
             </button>

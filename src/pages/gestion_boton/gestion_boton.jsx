@@ -85,12 +85,6 @@ function GestionBoton() {
         { id: 2, nombre: "Juan Pérez", eliminado: false },
         { id: 3, nombre: "María López", eliminado: false },
         { id: 4, nombre: "Carlos Gómez", eliminado: false },
-        { id: 5, nombre: "Ana Ramírez", eliminado: false },
-        { id: 6, nombre: "Pedro Martínez", eliminado: false },
-        { id: 7, nombre: "Luz Fernández", eliminado: false },
-        { id: 8, nombre: "Erika Pozo", eliminado: false },
-        { id: 9, nombre: "Juanita Pérez", eliminado: false },
-        { id: 10, nombre: "Carlos Rodríguez", eliminado: false },
     ]);
 
     const [busqueda, setBusqueda] = useState(""); // Estado para la barra de búsqueda

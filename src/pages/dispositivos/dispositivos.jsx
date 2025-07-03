@@ -36,7 +36,7 @@ function DispositivoCard({ dispositivo, onFlechaClick, seleccionado, onSelect, e
         }}
         onMouseEnter={(e) => {
           if (!eliminado) {
-            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.transform = "scale(1.04)";
             e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.3)";
           }
         }}
@@ -54,18 +54,27 @@ function DispositivoCard({ dispositivo, onFlechaClick, seleccionado, onSelect, e
           style={{ objectFit: "cover", height: "200px" }}
           loading="lazy"
         />
-        <div className="card-body bg-dark text-white text-center">
-          <h6 className="card-title mb-1">ID Cliente: {dispositivo.clienteId}</h6> {/* Solo el ID Cliente */}
-          <div className="d-flex justify-content-center gap-2">
+       <div className="card-body bg-dark text-white text-center" style={{ padding: "0.5rem 0.25rem" }}> {/* Eliminado p-1, añadido estilo inline */}
+         <h6 className="card-title mb-1 d-flex align-items-center justify-content-center gap-2" style={{ fontWeight: 700, fontSize: "1.08rem" }}> {/* Cambiado mb-2 a mb-1 */}
+            <i className="fas fa-mobile-alt text-primary"></i> {dispositivo.nombre}
+          </h6>
+          <div className="mb-1 d-flex align-items-center justify-content-center gap-2">
+            <i className="fas fa-microchip text-secondary"></i>
+            <span style={{ fontSize: ".98rem", fontWeight: 600 }}>{dispositivo.tipoDispositivo}</span>
+          </div>
+          <div className="d-flex justify-content-center gap-2 mt-3">
             <button
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm d-flex align-items-center gap-1"
               onClick={() => onFlechaClick(dispositivo)}
               disabled={eliminado}
             >
-              Ver Información
+             Ver Información
             </button>
           </div>
-          <div className="form-check mt-2">
+          
+        
+          <div  className="form-check mt-0"></div>
+          <div className="form-check mt-2 d-flex justify-content-center">
             <input
               type="checkbox"
               checked={seleccionado}
@@ -272,7 +281,9 @@ function GestionDispositivos() {
               </div>
               <div className="modal-body">
                 <div className="mb-3">
-                  <label className="form-label">Dispositivo</label>
+                  <label className="form-label d-flex align-items-center gap-2">
+                    <i className="fas fa-mobile-alt text-primary"></i> Dispositivo
+                  </label>
                   <input
                     type="text"
                     className="form-control"
@@ -283,7 +294,9 @@ function GestionDispositivos() {
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Sistema Operativo</label>
+                  <label className="form-label d-flex align-items-center gap-2">
+                    <i className="fas fa-microchip text-secondary"></i> Tipo
+                  </label>
                   <input
                     type="text"
                     className="form-control"
@@ -297,17 +310,17 @@ function GestionDispositivos() {
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-secondary d-flex align-items-center gap-1"
                   onClick={() => setMostrarFormulario(false)}
                 >
-                  Cancelar
+                  <i className="fas fa-times"></i> Cancelar
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-primary d-flex align-items-center gap-1"
                   onClick={handleGuardarNuevoDispositivo}
                 >
-                  Guardar
+                  <i className="fas fa-save"></i> Guardar
                 </button>
               </div>
             </div>

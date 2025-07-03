@@ -38,8 +38,8 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
         }}
         onMouseEnter={(e) => {
           if (!eliminado) {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.3)";
+            e.currentTarget.style.transform = "scale(1.04)"; // Zoom más pequeño
+            e.currentTarget.style.boxShadow = "0 4px 20px rgba(0, 0, 0, 0.18)";
           }
         }}
         onMouseLeave={(e) => {
@@ -164,12 +164,7 @@ function InformacionContactosClientes() {
               >
                 <i className="bi bi-trash"></i> Eliminar
               </button>
-              <button
-                className="btn btn-primary d-flex align-items-center gap-2"
-                onClick={handleAgregarInformacion}
-              >
-                <i className="bi bi-plus-circle"></i>Agregar
-              </button>
+            
             </div>
           </div>
 

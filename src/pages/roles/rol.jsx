@@ -89,6 +89,7 @@ function Rol() {
   const [rolesSeleccionados, setRolesSeleccionados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [nuevoRol, setNuevoRol] = useState({ nombre: "", usuario_id: "" });
+  const [usuarioLogeado, setUsuarioLogeado] = useState(null);
 
   // Obtener roles desde el backend
   useEffect(() => {
@@ -104,27 +105,55 @@ function Rol() {
     fetchRoles();
   }, []);
 
+  // Obtener usuario logeado (igual que en perfil.jsx)
+  useEffect(() => {
+    const fetchUsuario = async () => {
+      try {
+        const usuarioId = localStorage.getItem("usuario_id");
+        if (!usuarioId) {
+          throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
+        }
+        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
+        setUsuarioLogeado(response.data);
+      } catch (error) {
+        setUsuarioLogeado(null);
+      }
+    };
+    fetchUsuario();
+  }, []);
+
   const rolesFiltrados = roles.filter((rol) =>
     rol.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   const handleEliminarRolesSeleccionados = async () => {
-    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
-
+    if (rolesSeleccionados.length === 0) return;
+    const confirm = await Swal.fire({
+      title: '¿Está seguro de eliminar los roles seleccionados?',
+      text: 'Esta acción no se puede deshacer.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Eliminar',
+      cancelButtonText: 'Cancelar',
+      reverseButtons: true
+    });
+    if (!confirm.isConfirmed) return;
+    const csrfToken = localStorage.getItem("csrfToken");
     try {
       for (const id of rolesSeleccionados) {
         await axios.delete(`http://localhost:9000/roles/${id}`, {
           headers: {
-            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+            "CSRF-Token": csrfToken,
           },
-          withCredentials: true, // Asegúrate de enviar las cookies
+          withCredentials: true,
         });
       }
       setRoles((prevRoles) =>
         prevRoles.filter((rol) => !rolesSeleccionados.includes(rol.id))
       );
       setRolesSeleccionados([]);
-
       Swal.fire({
         icon: "success",
         title: "¡Roles eliminados!",
@@ -134,7 +163,6 @@ function Rol() {
       });
     } catch (error) {
       console.error("Error al eliminar roles:", error.message);
-
       Swal.fire({
         icon: "error",
         title: "Error al eliminar",
@@ -187,23 +215,22 @@ const handleGuardarRol = async (rolEditado) => {
 };
 
   const handleAgregarRol = async () => {
-    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
-
+    const csrfToken = localStorage.getItem("csrfToken");
     try {
+      // Asigna el usuario logeado automáticamente
       const response = await axios.post(
         "http://localhost:9000/roles",
-        nuevoRol,
+        { ...nuevoRol, usuario_id: usuarioLogeado?.id },
         {
           headers: {
-            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
+            "CSRF-Token": csrfToken,
           },
-          withCredentials: true, // Asegúrate de enviar las cookies
+          withCredentials: true,
         }
       );
       setRoles((prevRoles) => [response.data, ...prevRoles]);
       setNuevoRol({ nombre: "", usuario_id: "" });
       setMostrarFormulario(false);
-
       Swal.fire({
         icon: "success",
         title: "¡Rol agregado!",
@@ -213,7 +240,6 @@ const handleGuardarRol = async (rolEditado) => {
       });
     } catch (error) {
       console.error("Error al agregar el rol:", error.message);
-
       Swal.fire({
         icon: "error",
         title: "Error al agregar",
@@ -272,6 +298,7 @@ const handleGuardarRol = async (rolEditado) => {
           rol={rolSeleccionado}
           onClose={handleCerrarModal}
           onSave={handleGuardarRol}
+          usuarioLogeado={usuarioLogeado}
         />
       )}
 
@@ -286,7 +313,13 @@ const handleGuardarRol = async (rolEditado) => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Agregar Rol</h5>
+               <h5
+              className="modal-title"
+              style={{
+                fontSize: "17px",
+                fontWeight: "bold",
+              }}
+            >Agregar Rol</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -303,30 +336,23 @@ const handleGuardarRol = async (rolEditado) => {
                     onChange={(e) => setNuevoRol({ ...nuevoRol, nombre: e.target.value })}
                   />
                 </div>
-                <div className="mb-3">
-                  <label className="form-label">ID del Usuario</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoRol.usuario_id}
-                    onChange={(e) => setNuevoRol({ ...nuevoRol, usuario_id: e.target.value })}
-                  />
-                </div>
+                {/* El campo de ID del usuario ya no se muestra */}
               </div>
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="btn btn-secondary d-flex align-items-center"
                   onClick={() => setMostrarFormulario(false)}
                 >
-                  Cancelar
+                  <i className="fas fa-times me-2"></i> Cancelar
                 </button>
                 <button
                   type="button"
-                  className="btn btn-primary"
+                  className="btn btn-primary d-flex align-items-center"
                   onClick={handleAgregarRol}
+                  disabled={!nuevoRol.nombre.trim()}
                 >
-                  Guardar
+                  <i className="fas fa-save me-2"></i> Guardar
                 </button>
               </div>
             </div>

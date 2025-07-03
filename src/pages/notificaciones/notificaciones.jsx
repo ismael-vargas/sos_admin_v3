@@ -51,7 +51,7 @@ function NotificacionCard({ notificacion, onVerInformacionClick, onSelectNotific
         <div className="card-body bg-dark text-white text-center">
           {/* Título de la notificación */}
           <h6 className="card-title mb-2" style={{ fontSize: "calc(1rem + 2px)" }}>
-            {notificacion.presionBotonId}
+            Alerta de Botón: {notificacion.presionBotonId}
           </h6>
 
           {/* Botón de información */}
@@ -92,7 +92,6 @@ function GestionNotificaciones() {
     { id: 2, presionBotonId: "PB002", clienteNotificadoId: "C002", notificacionesRecibidas: 3, eliminado: false },
     { id: 3, presionBotonId: "PB003", clienteNotificadoId: "C003", notificacionesRecibidas: 8, eliminado: false },
     { id: 4, presionBotonId: "PB004", clienteNotificadoId: "C004", notificacionesRecibidas: 1, eliminado: false },
-    { id: 5, presionBotonId: "PB005", clienteNotificadoId: "C005", notificacionesRecibidas: 6, eliminado: false },
   ]);
 
   const [busqueda, setBusqueda] = useState(""); // Estado para manejar la barra de búsqueda.

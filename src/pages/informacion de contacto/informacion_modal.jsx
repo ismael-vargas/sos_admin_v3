@@ -81,7 +81,10 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
       >
         <div className="modal-content" style={{ borderRadius: "0", border: "none" }}>
           <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
-            <h5 className="modal-title" style={{ fontSize: "1.05rem" }}>
+            <h5
+              className="modal-title text-truncate"
+              style={{ maxWidth: "100%", fontSize: "15px" }}
+            >
               Detalles del Usuario: <strong>{informacion.nombre}</strong>
             </h5>
             <button
@@ -143,17 +146,19 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
           <div className="modal-footer bg-light d-flex justify-content-center">
             {!editando ? (
               <button
-                className="btn btn-primary me-2"
+                className="btn me-2 d-flex align-items-center justify-content-center"
+                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
                 onClick={() => setEditando(true)}
               >
-                Editar
+                <i className="fas fa-edit me-2"></i> Editar
               </button>
             ) : (
               <button
-                className="btn btn-success me-2"
+                className="btn me-2 d-flex align-items-center justify-content-center"
+                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
                 onClick={guardarCambios}
               >
-                Guardar Cambios
+                <i className="fas fa-save me-2"></i> Guardar Cambios
               </button>
             )}
           </div>
