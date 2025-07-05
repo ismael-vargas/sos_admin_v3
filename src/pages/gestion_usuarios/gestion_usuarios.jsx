@@ -132,9 +132,24 @@ function GestionUsuarios() {
         }
     };
 
-    const handleEliminarUsuarios = () => {
-        usuariosSeleccionados.forEach((id) => eliminarUsuario(id));
-        setUsuariosSeleccionados([]);
+    const handleEliminarUsuarios = async () => {
+        if (usuariosSeleccionados.length === 0) return;
+        const confirm = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Deseas eliminar ${usuariosSeleccionados.length > 1 ? 'estos usuarios' : 'este usuario'}? Esta acción es reversible (se marcarán como inactivos).`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        });
+        if (confirm.isConfirmed) {
+            for (const id of usuariosSeleccionados) {
+                await eliminarUsuario(id);
+            }
+            setUsuariosSeleccionados([]);
+        }
     };
 
     const handleEstadoDesdeModal = (id, nuevoEstado) => {

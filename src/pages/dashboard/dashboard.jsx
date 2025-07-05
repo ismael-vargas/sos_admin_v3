@@ -363,23 +363,57 @@ const Dashboard = () => {
     const [editing, setEditing] = useState(false);
     const [mobileView, setMobileView] = useState(true);
     const [editorValues, setEditorValues] = useState({
-        gradientStart: '#026b6b', // color background de tu theme
-        gradientEnd: '#2D353C',   // color backgroundAlt de tu theme
+        gradientStart: '#026b6b',
+        gradientEnd: '#2D353C',
         fontFamily: 'Open Sans',
         mainTitle: 'Un toque para tu seguridad',
         howTitle: 'Cómo Funciona',
-        howContent: 'Presiona el botón de pánico 3 veces para enviar una alerta instantánea a nuestra central, a la comunidad cercana y a tus contactos de emergencia.',
+        howContent: '',
         missionTitle: 'Nuestra Misión',
-        missionContent: 'Proporcionar una herramienta de respuesta rápida que conecte a personas en emergencia con ayuda inmediata, fortaleciendo la seguridad y la colaboración ciudadana a través de la tecnología.',
+        missionContent: '',
         visionTitle: 'Nuestra Visión',
-        visionContent: 'Ser la plataforma de seguridad colaborativa líder, creando vecindarios más seguros y conectados mediante la innovación tecnológica y la participación ciudadana.'
+        visionContent: ''
     });
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [csrfToken, setCsrfToken] = useState('');
+    const csrfFetched = useRef(false); // Para evitar pedir el token varias veces
 
     useEffect(() => {
         if (!isAuthenticated()) {
-            navigate("/login"); // Redirige al login si no está autenticado
+            navigate("/login");
         }
+        // Solo pedir el token CSRF una vez por sesión
+        if (!csrfFetched.current) {
+            fetch('http://localhost:9000/csrf-token', {
+                credentials: 'include'
+            })
+                .then(res => res.json())
+                .then(data => setCsrfToken(data.csrfToken))
+                .catch(() => setCsrfToken(''));
+            csrfFetched.current = true;
+        }
+        // Obtener datos reales del backend
+        fetch('http://localhost:9000/api/mobile-content', {
+            credentials: 'include'
+        })
+            .then(res => res.json())
+            .then(data => {
+                setEditorValues({
+                    gradientStart: data.gradientStart || '#026b6b',
+                    gradientEnd: data.gradientEnd || '#2D353C',
+                    fontFamily: data.fontFamily || 'Open Sans',
+                    mainTitle: data.mainTitle || '',
+                    howTitle: data.sections?.find(s => s.key === 'howItWorks')?.title || 'Cómo Funciona',
+                    howContent: data.sections?.find(s => s.key === 'howItWorks')?.content || '',
+                    missionTitle: data.sections?.find(s => s.key === 'mission')?.title || 'Nuestra Misión',
+                    missionContent: data.sections?.find(s => s.key === 'mission')?.content || '',
+                    visionTitle: data.sections?.find(s => s.key === 'vision')?.title || 'Nuestra Visión',
+                    visionContent: data.sections?.find(s => s.key === 'vision')?.content || ''
+                });
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
     }, [navigate]);
 
     const handleEditorChange = (property, value) => {
@@ -389,15 +423,55 @@ const Dashboard = () => {
         }));
     };
 
-    const handleSave = () => {
-        Swal.fire({
-            icon: 'success',
-            title: '¡Cambios realizados!',
-            text: 'Cambios realizados a tu app correctamente',
-            confirmButtonColor: '#13b0a7',
-            confirmButtonText: 'OK'
-        });
+    const handleSave = async () => {
+        const body = {
+            gradientStart: editorValues.gradientStart,
+            gradientEnd: editorValues.gradientEnd,
+            fontFamily: editorValues.fontFamily,
+            mainTitle: editorValues.mainTitle,
+            sections: [
+                { key: 'howItWorks', title: editorValues.howTitle, content: editorValues.howContent },
+                { key: 'mission', title: editorValues.missionTitle, content: editorValues.missionContent },
+                { key: 'vision', title: editorValues.visionTitle, content: editorValues.visionContent }
+            ]
+        };
+        try {
+            // Solicita el token CSRF justo antes de guardar
+            const csrfRes = await fetch('http://localhost:9000/csrf-token', {
+                credentials: 'include'
+            });
+            const csrfData = await csrfRes.json();
+            const csrfToken = csrfData.csrfToken;
+
+            const res = await fetch('http://localhost:9000/api/mobile-content', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                credentials: 'include',
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error('Error al guardar');
+            Swal.fire({
+                icon: 'success',
+                title: '¡Cambios realizados!',
+                text: 'Cambios realizados a tu app correctamente',
+                confirmButtonColor: '#13b0a7',
+                confirmButtonText: 'OK'
+            });
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'No se pudo guardar el contenido',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'OK'
+            });
+        }
     };
+
+    if (loading) return <div className="text-center py-5">Cargando...</div>;
 
     return (
         <div>

@@ -1,20 +1,31 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useContext } from 'react';
 import { AppSettings } from './../../config/app-settings.js';
 
 function SidebarMinifyBtn() {
+	const context = useContext(AppSettings);
+
+	const handleMinify = (event) => {
+		event.preventDefault();
+		// Cambia el estado visual
+		context.toggleAppSidebarMinify();
+		// Guarda la preferencia en backend
+		if (context.usuarioId && context.guardarPreferenciasUsuario) {
+			context.guardarPreferenciasUsuario(
+				context.usuarioId,
+				context.appDarkMode ? 'oscuro' : 'claro',
+				!context.appSidebarMinify // el nuevo valor
+			);
+		}
+	};
+
 	return (
-		<AppSettings.Consumer>
-			{({toggleAppSidebarMinify, toggleAppSidebarMobile, appSidebarTransparent, appSidebarGrid}) => (
-				<div className="menu">
-					<div className="menu-item d-flex">
-						<Link to="/" className="app-sidebar-minify-btn ms-auto" onClick={toggleAppSidebarMinify}>
-							<i className="fa fa-angle-double-left"></i>
-						</Link>
-					</div>
-				</div>
-			)}
-		</AppSettings.Consumer>
+		<div className="menu">
+			<div className="menu-item d-flex">
+				<button type="button" className="app-sidebar-minify-btn ms-auto" onClick={handleMinify}>
+					<i className="fa fa-angle-double-left"></i>
+				</button>
+			</div>
+		</div>
 	)
 }
 

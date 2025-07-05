@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from './config/app-settings.js';
 import { slideToggle } from './composables/slideToggle.js';
-import { isAuthenticated } from './config/auth'; // Ruta correcta
-import { useNavigate } from 'react-router-dom'; // Asegúrate de importar useNavigate
+import { isAuthenticated } from './config/auth';
+import { useNavigate } from 'react-router-dom';
+import axios from './api/axios';
 
 import Header from './components/header/header.jsx';
 import Sidebar from './components/sidebar/sidebar.jsx';
@@ -38,6 +39,7 @@ function App() {
 	const [appSidebarEndToggled, setAppSidebarEndToggled] = useState(false);
 	const [appSidebarEndMobileToggled, setAppSidebarEndMobileToggled] = useState(false);
 	const navigate = useNavigate(); // Inicializa useNavigate
+	const usuarioId = localStorage.getItem('usuario_id');
 
   const handleSetAppHeaderNone = (value) => {
 		setAppHeaderNone(value);
@@ -114,8 +116,7 @@ function App() {
 		}
 	};
 
-	const toggleAppSidebarMinify = (e) => {
-		e.preventDefault();
+	const toggleAppSidebarMinify = () => {
 		setAppSidebarMinify(!appSidebarMinify);
 		if (localStorage) {
 			localStorage.appSidebarMinify = !appSidebarMinify;
@@ -213,6 +214,59 @@ function App() {
 		setAppSidebarEndMobileToggled(!appSidebarEndMobileToggled);
 	}
 
+	// Función para guardar preferencias en el backend
+	const guardarPreferenciasUsuario = async (usuarioId, tema, sidebarMinimizado) => {
+		const csrfToken = localStorage.getItem("csrfToken");
+		try {
+			await axios.put(`/usuarios/${usuarioId}/preferencias`, {
+				tema,
+				sidebarMinimizado,
+			}, {
+				headers: {
+					"CSRF-Token": csrfToken,
+				},
+				withCredentials: true,
+			});
+		} catch (error) {
+			// Si no existen preferencias, créalas
+			if (error.response && error.response.status === 404) {
+				try {
+					await axios.post(`/usuarios/${usuarioId}/preferencias`, {
+						tema,
+						sidebarMinimizado,
+					}, {
+						headers: {
+							"CSRF-Token": csrfToken,
+						},
+						withCredentials: true,
+					});
+				} catch (err) {
+					console.error('Error al crear preferencias:', err);
+				}
+			} else {
+				console.error('Error al guardar preferencias:', error);
+			}
+		}
+	};
+
+	// Cargar preferencias al iniciar sesión
+	useEffect(() => {
+		const cargarPreferencias = async () => {
+			if (usuarioId) {
+				try {
+					const res = await axios.get(`/usuarios/${usuarioId}/preferencias`);
+					if (res.data && res.data.preferencias) {
+						setAppDarkMode(res.data.preferencias.tema === 'oscuro');
+						setAppSidebarMinify(res.data.preferencias.sidebarMinimizado);
+					}
+				} catch (error) {
+					console.error('Error al cargar preferencias:', error);
+				}
+			}
+		};
+		cargarPreferencias();
+	}, [usuarioId]);
+
 	useEffect(() => {
 		handleSetAppTheme(appTheme);
 		if (appDarkMode) {
@@ -302,6 +356,8 @@ function App() {
 				handleSetAppDarkMode,
 				handleSetAppGradientEnabled,
 				handleSetAppTheme,
+				usuarioId,
+				guardarPreferenciasUsuario,
 			}}
 		>
 			<div

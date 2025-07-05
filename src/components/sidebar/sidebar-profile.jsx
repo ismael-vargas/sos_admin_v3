@@ -30,6 +30,14 @@ function SidebarProfile() {
 
   function handleDarkMode(e) {
     context.handleSetAppDarkMode(e.target.checked);
+    // Guardar preferencia en backend
+    if (context.usuarioId && context.guardarPreferenciasUsuario) {
+      context.guardarPreferenciasUsuario(
+        context.usuarioId,
+        e.target.checked ? 'oscuro' : 'claro',
+        context.appSidebarMinify
+      );
+    }
   }
 
   function handleLogout() {
