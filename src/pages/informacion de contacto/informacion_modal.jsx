@@ -73,18 +73,39 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
       <div
         className="modal-dialog"
         style={{
-          maxWidth: "600px",
-          borderRadius: "0", // Borde recto, sin curvas
-          overflow: "hidden",
+          maxWidth: "900px",
+          width: "100%",
         }}
         role="document"
       >
-        <div className="modal-content" style={{ borderRadius: "0", border: "none" }}>
-          <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
+        <div 
+          className="modal-content" 
+          style={{ 
+            borderRadius: "20px",
+            border: "none",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
+            overflow: 'hidden',
+          }}
+        >
+          <div 
+            className="modal-header border-0" 
+            style={{ 
+              background: "#0891b2",
+              color: "white",
+              padding: "20px 30px",
+              borderRadius: "20px 20px 0 0"
+            }}
+          >
             <h5
               className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "15px" }}
+              style={{ 
+                maxWidth: "100%", 
+                fontSize: "18px",
+                fontWeight: "600",
+                margin: 0
+              }}
             >
+              <i className="fas fa-user-circle me-2"></i>
               Detalles del Usuario: <strong>{informacion.nombre}</strong>
             </h5>
             <button
@@ -92,26 +113,33 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
               className="btn-close btn-close-white"
               aria-label="Close"
               onClick={onClose}
+              style={{
+                opacity: "0.8",
+                fontSize: "1.2rem"
+              }}
             ></button>
           </div>
-          <div className="modal-body bg-white" style={{ padding: "20px" }}>
+          <div className="modal-body bg-white" style={{ padding: "30px" }}>
             <div className="text-center mb-4" onClick={handleSeleccionar}>
               <img
                 src="/assets/img/Pinteres.jpeg" // Ruta absoluta para la imagen
                 alt={`Imagen de ${informacion.nombre}`}
                 style={{
-                  width: "100px",
-                  height: "100px",
+                  width: "120px",
+                  height: "120px",
                   borderRadius: "50%",
                   objectFit: "cover",
-                  border: seleccionada ? "3px solid #007bff" : "2px solid #ddd", // Marca solo la tarjeta seleccionada
+                  border: seleccionada ? "4px solid #0891b2" : "3px solid #e9ecef",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.15)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease"
                 }}
               />
             </div>
-            <table className="table table-borderless">
+            <table className="table table-borderless" style={{ fontSize: "16px" }}>
               <tbody>
                 <tr>
-                  <th>Nombre:</th>
+                  <th style={{ width: "30%", color: "#495057", fontWeight: "600" }}>Nombre:</th>
                   <td>
                     {editando ? (
                       <input
@@ -119,14 +147,23 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
                         className="form-control"
                         value={nombre}
                         onChange={(e) => setNombre(e.target.value)}
+                        style={{
+                          borderRadius: "10px",
+                          border: "2px solid #e9ecef",
+                          padding: "10px 15px",
+                          fontSize: "16px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e9ecef"}
                       />
                     ) : (
-                      <span>{informacion.nombre}</span>
+                      <span style={{ color: "#212529", fontWeight: "500" }}>{informacion.nombre}</span>
                     )}
                   </td>
                 </tr>
                 <tr>
-                  <th>Número:</th>
+                  <th style={{ width: "30%", color: "#495057", fontWeight: "600" }}>Número:</th>
                   <td>
                     {editando ? (
                       <input
@@ -134,31 +171,57 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
                         className="form-control"
                         value={numero}
                         onChange={(e) => setNumero(e.target.value)}
+                        style={{
+                          borderRadius: "10px",
+                          border: "2px solid #e9ecef",
+                          padding: "10px 15px",
+                          fontSize: "16px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e9ecef"}
                       />
                     ) : (
-                      <span>{informacion.numero}</span>
+                      <span style={{ color: "#212529", fontWeight: "500" }}>{informacion.numero}</span>
                     )}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div className="modal-footer bg-light d-flex justify-content-center">
+          <div 
+            className="modal-footer bg-light d-flex justify-content-center"
+            style={{ 
+              padding: "20px 30px",
+              borderRadius: "0 0 20px 20px",
+              borderTop: "1px solid #dee2e6"
+            }}
+          >
             {!editando ? (
               <button
-                className="btn me-2 d-flex align-items-center justify-content-center"
-                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
+                className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
+                style={{ 
+                  fontWeight: 600, 
+                  fontSize: "1.08rem", 
+                  padding: "10px 32px", 
+                  borderRadius: "14px" 
+                }}
                 onClick={() => setEditando(true)}
               >
-                <i className="fas fa-edit me-2"></i> Editar
+                <i className="fas fa-edit me-1"></i> Editar
               </button>
             ) : (
               <button
-                className="btn me-2 d-flex align-items-center justify-content-center"
-                style={{ background: "#339cf6", color: "#fff", fontWeight: 600, fontSize: "1.08rem", padding: "10px 32px", borderRadius: "14px", boxShadow: "0 2px 8px #339cf622" }}
+                className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
+                style={{ 
+                  fontWeight: 600, 
+                  fontSize: "1.08rem", 
+                  padding: "10px 32px", 
+                  borderRadius: "14px" 
+                }}
                 onClick={guardarCambios}
               >
-                <i className="fas fa-save me-2"></i> Guardar Cambios
+                <i className="fas fa-save me-1"></i> Guardar Cambios
               </button>
             )}
           </div>

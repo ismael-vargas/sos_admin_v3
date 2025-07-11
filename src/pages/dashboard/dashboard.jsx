@@ -5,7 +5,6 @@ import { Panel, PanelHeader, PanelBody } from './../../components/panel/panel.js
 import { Edit2, Save, Smartphone, Monitor, Upload } from 'lucide-react';
 import '../../assets/scss/dashboard.scss';
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated } from "../../config/auth";
 import Swal from "sweetalert2";
 
 // Componente de texto editable
@@ -380,9 +379,6 @@ const Dashboard = () => {
     const csrfFetched = useRef(false); // Para evitar pedir el token varias veces
 
     useEffect(() => {
-        if (!isAuthenticated()) {
-            navigate("/login");
-        }
         // Solo pedir el token CSRF una vez por sesión
         if (!csrfFetched.current) {
             fetch('http://localhost:9000/csrf-token', {
@@ -393,6 +389,50 @@ const Dashboard = () => {
                 .catch(() => setCsrfToken(''));
             csrfFetched.current = true;
         }
+        
+        // Mostrar alerta de bienvenida si es un login reciente
+        const usuarioNombre = localStorage.getItem("usuario_nombre");
+        const showWelcome = localStorage.getItem("show_welcome");
+        
+        if (showWelcome === "true" && usuarioNombre) {
+            // Limpiar la bandera para no mostrar la alerta nuevamente
+            localStorage.removeItem("show_welcome");
+            
+            // Mostrar alerta de bienvenida después de un pequeño delay
+            setTimeout(() => {
+                Swal.fire({
+                    icon: "success",
+                    title: "¡Bienvenido al Panel!",
+                    html: `<div style="text-align: center; padding: 10px;">
+                             <div style="margin-bottom: 15px;">
+                               <i class="bi bi-person-check-fill" style="font-size: 2.5rem; color: #28a745;"></i>
+                             </div>
+                             <div style="margin-bottom: 10px;">
+                               <span style="color: #6c757d; font-size: 0.95em; display: block;">Iniciaste sesión como</span>
+                             </div>
+                             <div style="margin-bottom: 15px;">
+                               <strong style="color: #007bff; font-size: 1.1em; display: block; background: rgba(0, 123, 255, 0.1); padding: 8px 15px; border-radius: 20px; margin: 0 auto; display: inline-block;">${usuarioNombre}</strong>
+                             </div>
+                             <div>
+                               <small style="color: #28a745; font-size: 0.85em;">
+                                 <i class="bi bi-check-circle"></i> Sesión iniciada correctamente
+                               </small>
+                             </div>
+                           </div>`,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end',
+                    customClass: {
+                        popup: 'custom-success-popup',
+                        title: 'custom-success-title',
+                        htmlContainer: 'custom-success-content'
+                    }
+                });
+            }, 500);
+        }
+        
         // Obtener datos reales del backend
         fetch('http://localhost:9000/api/mobile-content', {
             credentials: 'include'
@@ -414,7 +454,7 @@ const Dashboard = () => {
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, [navigate]);
+    }, []);
 
     const handleEditorChange = (property, value) => {
         setEditorValues(prev => ({

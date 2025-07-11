@@ -2,45 +2,92 @@
 /* -------------------*/
 import React from "react";
 import PropTypes from "prop-types";
+import axios from 'axios';
+
+// Obtener la URL base desde variables de entorno o usar un valor por defecto
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://192.168.1.31:9000';
 
 // Componente modal para mostrar información de un dispositivo
-function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
-  const handleDelete = () => {
+function DispositivoModal({ dispositivo, onClose, onDelete, csrfToken }) {
+  const handleDelete = async () => {
+    // Usar SweetAlert2 directamente en el modal para confirmar eliminación
     if (window.Swal) {
-      window.Swal.fire({
-        title: "¿Desea eliminar este dispositivo?",
+      const result = await window.Swal.fire({
+        title: '¿Desea eliminar este dispositivo?',
+        html: `<p class="text-danger mt-3"><strong>Esta acción no se puede deshacer</strong></p>`,
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#d33",
         cancelButtonColor: "#6c757d",
-        confirmButtonText: "Eliminar",
+        confirmButtonText: "Sí, eliminar",
         cancelButtonText: "Cancelar",
         reverseButtons: true,
-      }).then((result) => {
-        if (result.isConfirmed) {
+        width: '400px'
+      });
+
+      if (result.isConfirmed) {
+        try {
+          // Verificar que tenemos el token CSRF
+          if (!csrfToken) {
+            throw new Error('Token CSRF no disponible');
+          }
+
+          // Verificar que tenemos el ID del dispositivo
+          if (!dispositivo || !dispositivo.id) {
+            throw new Error('ID del dispositivo no válido');
+          }
+
+          console.log('Eliminando dispositivo:', dispositivo.id, 'con token:', csrfToken);
+          
+          // Eliminar dispositivo usando la API directamente con token CSRF
+          await axios.delete(`${API_BASE_URL}/dispositivos/${dispositivo.id}`, {
+            headers: { 
+              'X-CSRF-Token': csrfToken,
+              'Content-Type': 'application/json'
+            },
+            withCredentials: true
+          });
+          
+          // Llamar a la función onDelete del padre para actualizar la lista (solo local)
           onDelete(dispositivo.id);
+          onClose(); // Cerrar el modal después de eliminar
+          
+          // Mostrar mensaje de éxito
           window.Swal.fire({
             icon: "success",
-            title: "Eliminado",
-            text: "El dispositivo ha sido eliminado.",
-            timer: 1200,
+            title: "Dispositivo eliminado",
+            text: "El dispositivo ha sido eliminado correctamente.",
+            timer: 2000,
             showConfirmButton: false,
           });
-          onClose();
+        } catch (error) {
+          console.error('Error al eliminar dispositivo:', error);
+          // Mostrar mensaje de error
+          window.Swal.fire({
+            icon: "error",
+            title: "Error",
+            text: `Hubo un error al eliminar el dispositivo: ${error.message}`,
+          });
         }
-      });
+      }
     } else {
       // Fallback si SweetAlert2 no está disponible
-      if (window.confirm("¿Desea eliminar este dispositivo?")) {
-        onDelete(dispositivo.id);
-        onClose();
+      if (window.confirm(`¿Está seguro de que desea eliminar el dispositivo "${dispositivo.nombre}"?`)) {
+        try {
+          // Eliminar dispositivo usando la API directamente con token CSRF
+          await axios.delete(`${API_BASE_URL}/dispositivos/${dispositivo.id}`, {
+            headers: { 'X-CSRF-Token': csrfToken }
+          });
+          
+          // Llamar a la función onDelete del padre para actualizar la lista
+          await onDelete(dispositivo.id);
+          onClose(); // Cerrar el modal después de eliminar
+        } catch (error) {
+          console.error('Error al eliminar dispositivo:', error);
+          alert("Error al eliminar el dispositivo");
+        }
       }
     }
-  };
-
-  const handleEdit = () => {
-    onEdit(dispositivo);
-    onClose();
   };
 
   return (
@@ -49,8 +96,8 @@ function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
       tabIndex="-1"
       role="dialog"
       style={{
-        backgroundColor: "rgba(0, 0, 0, 0.8)", // Fondo oscuro translúcido
-        display: "flex", // Centrado horizontal y vertical
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
         justifyContent: "center",
         alignItems: "center",
         position: "fixed",
@@ -58,124 +105,147 @@ function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
         left: 0,
         width: "100%",
         height: "100vh",
-        zIndex: 1050, // Encima de otros elementos
+        zIndex: 1050,
       }}
     >
       <div
         className="modal-dialog"
-        style={{ maxWidth: "600px", border: "none", boxShadow: "none" }}
+        style={{ maxWidth: "700px", width: "95%", border: "none", boxShadow: "none" }}
         role="document"
       >
         <div
           className="modal-content"
           style={{
+            borderRadius: "20px",
             border: "none",
-            borderRadius: "16px",
-            boxShadow: "0 4px 24px #00000022",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
+            overflow: 'hidden'
           }}
         >
           <div
-            className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start"
-            style={{ padding: "15px" }}
+            className="modal-header text-white d-flex align-items-center justify-content-between"
+            style={{ 
+              backgroundColor: "#0891b2", 
+              padding: "30px",
+              border: "none"
+            }}
           >
-             <h5
-              className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "15px" }}
-            >
-              Detalles del Dispositivo: <strong>{dispositivo.nombre}</strong>
-            </h5>
+            <div className="d-flex align-items-center">
+              <i className="fas fa-mobile-alt me-3" style={{ fontSize: "28px", color: "white" }}></i>
+              <h5 className="modal-title mb-0" style={{ fontSize: "18px", fontWeight: 600, color: "white" }}>
+                Detalles del Dispositivo: <strong>{dispositivo.nombre}</strong>
+              </h5>
+            </div>
             <button
               type="button"
-              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
+              className="btn-close btn-close-white"
               aria-label="Close"
               onClick={onClose}
+              style={{ fontSize: "1.2rem" }}
             ></button>
           </div>
 
-          <div className="modal-body bg-white">
-            <div className="text-center mb-3">
-              <i className="fas fa-mobile-alt fa-3x text-primary mb-2"></i>
+          <div className="modal-body" style={{ backgroundColor: "#f8f9fa", padding: "30px" }}>
+            <div className="text-center mb-4">
+              <div style={{
+                width: "150px",
+                height: "150px",
+                borderRadius: "50%",
+                backgroundColor: "#0891b2",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto",
+                boxShadow: "0 8px 16px rgba(8, 145, 178, 0.3)"
+              }}>
+                <i className="fas fa-mobile-alt" style={{ fontSize: "60px", color: "white" }}></i>
+              </div>
             </div>
-            <div className="row g-2 mb-2 justify-content-center">
-              <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
-                  {/* Sin ícono */}
-                  <div>
-                    <div
-                      className="text-muted mb-1"
-                      style={{ fontSize: ".98rem", fontWeight: 600 }}
-                    >
-                      ID:
+            
+            <div className="row g-4">
+              <div className="col-12 col-md-6">
+                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                  <div className="d-flex align-items-center mb-3">
+                    <i className="fas fa-hashtag me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                    <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>ID del Dispositivo</h6>
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{dispositivo.id}</div>
+                </div>
+              </div>
+              
+              <div className="col-12 col-md-6">
+                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                  <div className="d-flex align-items-center mb-3">
+                    <i className="fas fa-user me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                    <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>ID del Cliente</h6>
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{dispositivo.clienteId}</div>
+                </div>
+              </div>
+              
+              <div className="col-12 col-md-6">
+                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                  <div className="d-flex align-items-center mb-3">
+                    <i className="fas fa-mobile-alt me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                    <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Modelo</h6>
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{dispositivo.nombre}</div>
+                </div>
+              </div>
+              
+              <div className="col-12 col-md-6">
+                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                  <div className="d-flex align-items-center mb-3">
+                    <i className="fas fa-microchip me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                    <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Tipo de Dispositivo</h6>
+                  </div>
+                  <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{dispositivo.tipoDispositivo}</div>
+                </div>
+              </div>
+              
+              {dispositivo.tokenDispositivo && (
+                <div className="col-12">
+                  <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                    <div className="d-flex align-items-center mb-3">
+                      <i className="fas fa-key me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                      <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Token del Dispositivo</h6>
                     </div>
-                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
-                      {dispositivo.id}
+                    <div className="fw-semibold text-break" style={{ 
+                      fontSize: "0.9rem", 
+                      color: "#212529", 
+                      wordBreak: "break-all",
+                      backgroundColor: "#f8f9fa",
+                      padding: "10px",
+                      borderRadius: "8px",
+                      border: "1px solid #dee2e6"
+                    }}>
+                      {dispositivo.tokenDispositivo}
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
-                  {/* Sin ícono */}
-                  <div>
-                    <div
-                      className="text-muted mb-1"
-                      style={{ fontSize: ".98rem", fontWeight: 600 }}
-                    >
-                      ID Cliente:
-                    </div>
-                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
-                      {dispositivo.clienteId}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <i className="fas fa-mobile-alt text-primary"></i>
-                  <div>
-                    <div
-                      className="text-muted mb-1"
-                      style={{ fontSize: ".98rem", fontWeight: 600 }}
-                    >
-                      Dispositivo:
-                    </div>
-                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
-                      {dispositivo.nombre}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <i className="fas fa-microchip text-secondary"></i>
-                  <div>
-                    <div
-                      className="text-muted mb-1"
-                      style={{ fontSize: ".98rem", fontWeight: 600 }}
-                    >
-                      Tipo:
-                    </div>
-                    <div className="fw-semibold" style={{ fontSize: ".98rem" }}>
-                      {dispositivo.tipoDispositivo}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
-          <div className="modal-footer bg-light justify-content-center">
+          <div className="modal-footer bg-white d-flex justify-content-center border-0" style={{ padding: "30px" }}>
             <button
-              className="btn btn-primary d-flex align-items-center gap-1 me-2"
-              onClick={handleEdit}
-            >
-              <i className="fas fa-edit"></i> Editar Dispositivo
-            </button>
-            <button
-              className="btn btn-danger d-flex align-items-center gap-1"
+              className="btn d-flex align-items-center justify-content-center"
               onClick={handleDelete}
+              style={{ 
+                backgroundColor: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "14px",
+                padding: "10px 32px",
+                fontSize: "1.08rem",
+                fontWeight: 600,
+                transition: "all 0.3s ease",
+                boxShadow: "0 4px 12px rgba(220, 53, 69, 0.3)"
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = "#c82333"}
+              onMouseLeave={(e) => e.target.style.backgroundColor = "#dc3545"}
             >
-              <i className="fas fa-trash"></i> Eliminar Dispositivo
+              <i className="fas fa-trash me-2"></i> Eliminar Dispositivo
             </button>
           </div>
         </div>
@@ -187,13 +257,17 @@ function DispositivoModal({ dispositivo, onClose, onDelete, onEdit }) {
 DispositivoModal.propTypes = {
   dispositivo: PropTypes.shape({
     id: PropTypes.number.isRequired,
-    clienteId: PropTypes.string.isRequired,
+    clienteId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     nombre: PropTypes.string.isRequired,
     tipoDispositivo: PropTypes.string.isRequired,
+    tokenDispositivo: PropTypes.string,
+    estado: PropTypes.string,
+    fechaCreacion: PropTypes.string,
+    eliminado: PropTypes.bool,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
-  onEdit: PropTypes.func.isRequired,
+  csrfToken: PropTypes.string.isRequired,
 };
 
 export default DispositivoModal;

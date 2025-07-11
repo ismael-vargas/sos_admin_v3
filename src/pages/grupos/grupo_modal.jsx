@@ -27,99 +27,200 @@ function GrupoModal({ grupo, onClose }) {
             className="modal fade show d-flex justify-content-center align-items-center"
             tabIndex="-1"
             role="dialog"
-            style={{ backgroundColor: "rgba(0, 0, 0, 0.8)", display: "flex", justifyContent: "center", alignItems: "center" }}
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
         >
-            <div className="modal-dialog modal-xl" role="document">
-                <div className="modal-content" style={{ border: "none", borderRadius: "16px", boxShadow: "0 4px 24px #00000022" }}>
+            <div className="modal-dialog" role="document" style={{ maxWidth: "700px", width: "95%" }}>
+                <div className="modal-content" style={{ 
+                    borderRadius: "20px", 
+                    border: "none", 
+                    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
+                    overflow: 'hidden'
+                }}>
                     {/* Header del modal */}
-                    <div className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start" style={{ padding: "15px" }}>
-                      <h5
-              className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "15px" }}
-            >
-                            Detalles del Grupo: <strong>{grupo.nombre}</strong>
-                        </h5>
+                    <div className="modal-header text-white d-flex align-items-center justify-content-between" style={{ 
+                        backgroundColor: "#0891b2", 
+                        padding: "30px",
+                        border: "none"
+                    }}>
+                        <div className="d-flex align-items-center">
+                            <i className="fas fa-users me-3" style={{ fontSize: "28px", color: "white" }}></i>
+                            <h5 className="modal-title mb-0" style={{ fontSize: "18px", fontWeight: 600, color: "white" }}>
+                                Detalles del Grupo: <strong>{grupo.nombre}</strong>
+                            </h5>
+                        </div>
                         <button
                             type="button"
-                            className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
+                            className="btn-close btn-close-white"
                             aria-label="Close"
                             onClick={onClose}
+                            style={{ fontSize: "1.2rem" }}
                         ></button>
                     </div>
 
                     {/* Cuerpo del modal */}
-                    <div className="modal-body bg-white">
+                    <div className="modal-body" style={{ backgroundColor: "#f8f9fa", padding: "30px" }}>
                         <div className="text-center mb-4">
                             <img
                                 src={grupo.imagen ? `/assets/img/${grupo.imagen}` : "/assets/img/911.jpg"}
                                 alt={`Imagen de ${grupo.nombre}`}
-                                className="rounded-circle shadow"
-                                style={{ width: "120px", height: "120px", objectFit: "cover", border: "4px solid #e0e0e0" }}
+                                style={{
+                                    width: "150px", 
+                                    height: "150px",
+                                    borderRadius: "50%", 
+                                    objectFit: "cover", 
+                                    border: "4px solid #0891b2",
+                                    boxShadow: "0 8px 16px rgba(8, 145, 178, 0.3)"
+                                }}
                                 loading="lazy"
                             />
                         </div>
-                        <h3 className="text-center fw-bold mb-4" style={{ fontSize: "1.18rem" }}>{grupo.nombre}</h3>
-                        <div className="row g-3 mb-2">
+                        
+                        <div className="row g-4">
                             <div className="col-12 col-md-6">
-                                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
-                                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>ID:</div>
-                                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{grupo.id}</div>
+                                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <i className="fas fa-hashtag me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                                        <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>ID del Grupo</h6>
+                                    </div>
+                                    <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{grupo.id}</div>
                                 </div>
                             </div>
+                            
                             <div className="col-12 col-md-6">
-                                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
-                                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Miembros:</div>
-                                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{grupo.miembros}</div>
+                                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <i className="fas fa-users me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                                        <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Miembros</h6>
+                                    </div>
+                                    <div className="fw-semibold" style={{ fontSize: "1.2rem", color: "#212529" }}>{grupo.miembros}</div>
                                 </div>
                             </div>
-                            <div className="col-12 col-md-6">
-                                <div className="bg-light rounded-3 p-3 h-100 shadow-sm">
-                                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Descripción del Grupo:</div>
-                                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{grupo.descripcion || "Sin descripción"}</div>
+                            
+                            <div className="col-12">
+                                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <i className="fas fa-info-circle me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                                        <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Descripción del Grupo</h6>
+                                    </div>
+                                    <div className="fw-semibold" style={{ fontSize: "1.1rem", color: "#212529" }}>{grupo.descripcion || "Sin descripción"}</div>
                                 </div>
                             </div>
-                            <div className="col-12 col-md-6 d-flex flex-column align-items-center justify-content-center">
-                                <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
-                                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Estado:</div>
-                                    {!editandoEstado ? (
-                                        <span className="badge d-flex align-items-center justify-content-center gap-2" style={{ background: "#0891b2", color: "#fff", fontSize: "1.05rem", padding: "10px 32px", borderRadius: "24px", fontWeight: 700, letterSpacing: 1, boxShadow: "0 2px 8px #0891b233", minWidth: 120 }}>
-                                            <span style={{ display: "inline-block", width: 14, height: 14, background: "#fff", borderRadius: "50%", marginRight: 6, boxShadow: "0 0 0 2px #0891b2" }}></span>
-                                            {estado}
-                                        </span>
-                                    ) : (
-                                        <select className="form-select w-auto" value={estado} onChange={handleEstadoChange}>
-                                            <option value="Activo">Activo</option>
-                                            <option value="Inactivo">Inactivo</option>
-                                        </select>
-                                    )}
+                            
+                            <div className="col-12">
+                                <div className="bg-white p-4 shadow-sm" style={{ borderRadius: "15px", border: "2px solid #e9ecef" }}>
+                                    <div className="d-flex align-items-center mb-3">
+                                        <i className="fas fa-toggle-on me-3" style={{ fontSize: "20px", color: "#0891b2" }}></i>
+                                        <h6 className="mb-0" style={{ fontWeight: 600, color: "#495057", fontSize: "1.1rem" }}>Estado del Grupo</h6>
+                                    </div>
+                                    <div className="d-flex align-items-center justify-content-center">
+                                        {!editandoEstado ? (
+                                            <span className="badge d-flex align-items-center justify-content-center gap-2" style={{ 
+                                                background: "#0891b2", 
+                                                color: "#fff", 
+                                                fontSize: "1.05rem", 
+                                                padding: "10px 32px", 
+                                                borderRadius: "24px", 
+                                                fontWeight: 700, 
+                                                letterSpacing: 1, 
+                                                boxShadow: "0 2px 8px #0891b233", 
+                                                minWidth: 120 
+                                            }}>
+                                                <span style={{ 
+                                                    display: "inline-block", 
+                                                    width: 14, 
+                                                    height: 14, 
+                                                    background: "#fff", 
+                                                    borderRadius: "50%", 
+                                                    marginRight: 6, 
+                                                    boxShadow: "0 0 0 2px #0891b2" 
+                                                }}></span>
+                                                {estado}
+                                            </span>
+                                        ) : (
+                                            <select 
+                                                className="form-select"
+                                                value={estado} 
+                                                onChange={handleEstadoChange}
+                                                style={{ 
+                                                    borderColor: "#0891b2",
+                                                    focusColor: "#0891b2",
+                                                    maxWidth: "200px"
+                                                }}
+                                            >
+                                                <option value="Activo">Activo</option>
+                                                <option value="Inactivo">Inactivo</option>
+                                            </select>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Footer del modal */}
-                    <div className="modal-footer bg-light justify-content-center">
-                        {!editandoEstado ? (
+                    <div className="modal-footer bg-white d-flex justify-content-center border-0" style={{ padding: "30px" }}>
+                        <div className="d-flex gap-3">
+                            {!editandoEstado ? (
+                                <button
+                                    className="btn d-flex align-items-center justify-content-center"
+                                    onClick={() => setEditandoEstado(true)}
+                                    style={{ 
+                                        backgroundColor: "#0891b2",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "14px",
+                                        padding: "10px 32px",
+                                        fontSize: "1.08rem",
+                                        fontWeight: 600,
+                                        transition: "all 0.3s ease",
+                                        boxShadow: "0 4px 12px rgba(8, 145, 178, 0.3)"
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.backgroundColor = "#0782a1"}
+                                    onMouseLeave={(e) => e.target.style.backgroundColor = "#0891b2"}
+                                >
+                                    <i className="fas fa-edit me-2"></i> Editar Estado
+                                </button>
+                            ) : (
+                                <button
+                                    className="btn d-flex align-items-center justify-content-center"
+                                    onClick={guardarEstado}
+                                    style={{ 
+                                        backgroundColor: "#0891b2",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "14px",
+                                        padding: "10px 32px",
+                                        fontSize: "1.08rem",
+                                        fontWeight: 600,
+                                        transition: "all 0.3s ease",
+                                        boxShadow: "0 4px 12px rgba(8, 145, 178, 0.3)"
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.backgroundColor = "#0782a1"}
+                                    onMouseLeave={(e) => e.target.style.backgroundColor = "#0891b2"}
+                                >
+                                    <i className="fas fa-save me-2"></i> Guardar Estado
+                                </button>
+                            )}
                             <button
-                                className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
-                                onClick={() => setEditandoEstado(true)}
+                                className="btn d-flex align-items-center justify-content-center"
+                                onClick={cerrarModal}
+                                style={{ 
+                                    backgroundColor: "#dc3545",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "14px",
+                                    padding: "10px 32px",
+                                    fontSize: "1.08rem",
+                                    fontWeight: 600,
+                                    transition: "all 0.3s ease",
+                                    boxShadow: "0 4px 12px rgba(220, 53, 69, 0.3)"
+                                }}
+                                onMouseEnter={(e) => e.target.style.backgroundColor = "#c82333"}
+                                onMouseLeave={(e) => e.target.style.backgroundColor = "#dc3545"}
                             >
-                                <i className="fas fa-edit me-1"></i> Editar Estado
+                                <i className="fas fa-trash me-2"></i> Eliminar Grupo
                             </button>
-                        ) : (
-                            <button
-                                className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
-                                onClick={guardarEstado}
-                            >
-                                <i className="fas fa-save me-1"></i> Guardar Estado
-                            </button>
-                        )}
-                        <button
-                            className="btn btn-danger d-flex align-items-center justify-content-center"
-                            onClick={cerrarModal}
-                        >
-                            <i className="fas fa-trash me-1"></i> Eliminar Grupo
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>

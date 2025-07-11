@@ -19,9 +19,7 @@ import Dispositivos from '../pages/dispositivos/dispositivos.jsx';
 import Perfil from '../pages/perfil/perfil.jsx';
 import Estadisticas from '../pages/estadisticas/estadisticas.jsx'; 
 import { Navigate } from 'react-router-dom';
-import { isAuthenticated } from '../config/auth'; // Ruta correcta
-
-
+import { ProtectedRoute } from '../components/guards';
 
 const AppRoute = [
   {
@@ -29,22 +27,22 @@ const AppRoute = [
     element: <App />,
     children: [
       { path: '', element: <Navigate to="/login" /> }, // Redirige desde la raíz a /login
-      { path: 'dashboard', element: isAuthenticated() ? <Dashboard /> : <Navigate to="/login" /> }, // Ruta explícita para /dashboard
-      { path: 'gestion-usuarios', element: <Usuarios /> },
-      { path: 'gestion-clientes', element: <GestionClientes /> },
-      { path: 'informacion-contacto-usuarios', element: <InformacionContactosUsuarios /> },
-      { path: 'informacion-contacto-clientes', element: <InformacionContactosClientes /> },
-      { path: 'contactos-emergencia', element: <ContactosEmergencia /> },
-      { path: 'rol', element: <Rol /> },
-      { path: 'grupos', element: <GestionGrupos /> },
-      { path: 'ubicacion', element: <Ubicaciones /> },
-      { path: 'gestion-boton', element: <GestionBoton /> },
-      { path: 'respuesta-usuario', element: <RespuestaUsuario /> },
-      { path: 'notificaciones', element: <Notificaciones/> },
-      { path: 'dispositivos', element: <Dispositivos/> },
-      { path: 'perfil', element: <Perfil/> },
+      { path: 'dashboard', element: <ProtectedRoute><Dashboard /></ProtectedRoute> },
+      { path: 'gestion-usuarios', element: <ProtectedRoute><Usuarios /></ProtectedRoute> },
+      { path: 'gestion-clientes', element: <ProtectedRoute><GestionClientes /></ProtectedRoute> },
+      { path: 'informacion-contacto-usuarios', element: <ProtectedRoute><InformacionContactosUsuarios /></ProtectedRoute> },
+      { path: 'informacion-contacto-clientes', element: <ProtectedRoute><InformacionContactosClientes /></ProtectedRoute> },
+      { path: 'contactos-emergencia', element: <ProtectedRoute><ContactosEmergencia /></ProtectedRoute> },
+      { path: 'rol', element: <ProtectedRoute><Rol /></ProtectedRoute> },
+      { path: 'grupos', element: <ProtectedRoute><GestionGrupos /></ProtectedRoute> },
+      { path: 'ubicacion', element: <ProtectedRoute><Ubicaciones /></ProtectedRoute> },
+      { path: 'gestion-boton', element: <ProtectedRoute><GestionBoton /></ProtectedRoute> },
+      { path: 'respuesta-usuario', element: <ProtectedRoute><RespuestaUsuario /></ProtectedRoute> },
+      { path: 'notificaciones', element: <ProtectedRoute><Notificaciones /></ProtectedRoute> },
+      { path: 'dispositivos', element: <ProtectedRoute><Dispositivos /></ProtectedRoute> },
+      { path: 'perfil', element: <ProtectedRoute><Perfil /></ProtectedRoute> },
       { path: '*', element: <Error /> },
-      { path: 'estadisticas', element: <Estadisticas/> }, 
+      { path: 'estadisticas', element: <ProtectedRoute><Estadisticas /></ProtectedRoute> }, 
     ]
   },
   // Ruta específica para el Login, sin el layout principal
@@ -64,5 +62,3 @@ export const logout = (navigate) => {
 };
 
 export default AppRoute;
-
-console.log("Estado de autenticación en Dashboard:", isAuthenticated());

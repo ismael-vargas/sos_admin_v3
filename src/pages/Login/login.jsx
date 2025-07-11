@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../../assets/scss/login.scss";
 import Swal from "sweetalert2";
-import instance from "../../api/axios"; // Asegúrate de usar esta instancia
+import instance from "../../api/axios";
+import { setAuthenticated } from "../../config/auth";
 
 const BASE_IMG_URL = "./assets/img";
 
 export const logout = (navigate) => {
-  localStorage.removeItem("usuario_id"); // Elimina el estado de autenticación
-  navigate("/login"); // Redirige al login
+  localStorage.removeItem("usuario_id");
+  navigate("/login");
 };
 
 const Login = () => {
@@ -17,6 +18,7 @@ const Login = () => {
   const [csrfToken, setCsrfToken] = useState("");
   const [error, setError] = useState("");
   const [isExiting, setIsExiting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
 
 
@@ -39,6 +41,7 @@ const Login = () => {
   const handleSubmit = async (e, reintento = false) => {
     e.preventDefault && e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     console.log("[LOGIN] Intentando iniciar sesión...", reintento ? "(reintento)" : "");
 
     try {
@@ -48,9 +51,10 @@ const Login = () => {
         const nuevoToken = await fetchCsrfToken();
         if (!nuevoToken) {
           setError("No se pudo obtener el token de seguridad. Por favor, recarga la página.");
+          setIsSubmitting(false);
           return;
         }
-        // No reintenta aquí, espera al siguiente submit
+        setIsSubmitting(false);
         return;
       }
 
@@ -72,14 +76,21 @@ const Login = () => {
       console.log("[LOGIN] Respuesta del backend:", response);
 
       if (response.status === 200 && response.data && response.data.usuario_id) {
-        localStorage.setItem("usuario_id", response.data.usuario_id);
+        // Usar la nueva función setAuthenticated en lugar de localStorage.setItem directamente
+        setAuthenticated(response.data.usuario_id);
+        // Guardar datos del usuario para mostrar en el dashboard
+        localStorage.setItem("usuario_nombre", response.data.nombre || "usuario");
+        localStorage.setItem("usuario_email", response.data.correo_electronico || "");
+        // Bandera para mostrar la alerta de bienvenida en el dashboard
+        localStorage.setItem("show_welcome", "true");
         console.log("[LOGIN] Login exitoso, usuario_id guardado:", response.data.usuario_id);
 
+        // Mostrar alerta de bienvenida antes de navegar
         Swal.fire({
           icon: "success",
           title: "¡Inicio de sesión exitoso!",
           html: `<strong class="custom-welcome">Bienvenido, ${response.data?.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
-          timer: 1300,
+          timer: 1500,
           timerProgressBar: true,
           showConfirmButton: false,
           allowOutsideClick: false,
@@ -91,9 +102,10 @@ const Login = () => {
             }
           },
         }).then(() => {
-          // Redirige solo después de cerrar el modal
-          console.log("[LOGIN] SweetAlert cerrado, redirigiendo...");
-          navigate("/dashboard");
+          // Navegación cuando se cierra la alerta
+          console.log("[LOGIN] Alerta cerrada, redirigiendo al dashboard...");
+          setIsSubmitting(false);
+          navigate("/dashboard", { replace: true });
         });
       } else {
         setError("Credenciales inválidas o sesión expirada. Intenta recargar la página.");
@@ -133,6 +145,8 @@ const Login = () => {
         confirmButtonText: "Entendido",
         confirmButtonColor: "#d33",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -207,13 +221,22 @@ const Login = () => {
           <button
             type="submit"
             className="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-2"
-            disabled={!csrfToken}
+            disabled={!csrfToken || isSubmitting}
           >
-            Iniciar Sesión
-            <i
-              className="bi bi-arrow-right-circle"
-              style={{ fontSize: "1.3rem", color: "#fff" }}
-            ></i>
+            {isSubmitting ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Iniciando sesión...
+              </>
+            ) : (
+              <>
+                Iniciar Sesión
+                <i
+                  className="bi bi-arrow-right-circle"
+                  style={{ fontSize: "1.3rem", color: "#fff" }}
+                ></i>
+              </>
+            )}
           </button>
           {!csrfToken && (
             <div className="alert alert-info mt-2">Cargando seguridad...</div>

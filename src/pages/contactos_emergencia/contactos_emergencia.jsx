@@ -1,12 +1,13 @@
 /* contactos_emergencia.jsx */
 /* -------------------*/
 // Importación de librerías y componentes necesarios
-import React, { useState } from "react"; // Importamos React y el hook useState para gestionar el estado local
+import React, { useState, useEffect } from "react"; // Importamos React y los hooks useState y useEffect para gestionar el estado local
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx"; // Importamos los componentes del panel
 import { Search, PhoneCall } from "lucide-react"; // Importamos iconos de la librería lucide-react
 import EmergenciaIcono from "../../assets/img/emergencia_icono.jpg"; // Importamos una imagen de ícono de emergencia
 import Swal from "sweetalert2";
 import ContactosEmergenciaModal from "./contactos_emergencia_modal.jsx";
+import axios from "axios"; // Importamos axios
 
 // Componente de búsqueda para filtrar contactos
 function Buscador({ busqueda, setBusqueda }) {
@@ -45,24 +46,24 @@ function EmergenciaCard({ emergencia, onSelect, isSelected, onCardClick, dataEme
           e.currentTarget.style.boxShadow = "none";
         }}
         role="region"
-        aria-label={`Tarjeta de ${emergencia.servicio}`}
+        aria-label={`Tarjeta de ${emergencia.nombre}`}
       >
         {/* Imagen representativa del servicio de emergencia */}
         <img
           src={EmergenciaIcono}
           className="card-img-top"
-          alt={`Ícono de ${emergencia.servicio}`}
+          alt={`Ícono de ${emergencia.nombre}`}
           style={{ objectFit: "cover", height: "150px" }}
           loading="lazy"
         />
         <div className="card-body text-center">
-          <h6 className="card-title mb-2">{emergencia.servicio}</h6>
+          <h6 className="card-title mb-2">{emergencia.nombre}</h6>
           <p className="card-text">{emergencia.descripcion}</p>
           <div className="d-flex justify-content-center align-items-center gap-2">
             <button
               className="btn btn-primary btn-sm d-flex justify-content-center align-items-center gap-2"
               onClick={() => onCardClick(emergencia)}
-              aria-label={`Ver información de ${emergencia.servicio}`}
+              aria-label={`Ver información de ${emergencia.nombre}`}
               tabIndex={-1}
             >
               Ver información
@@ -84,26 +85,69 @@ function EmergenciaCard({ emergencia, onSelect, isSelected, onCardClick, dataEme
 
 // Componente principal que contiene la lista de contactos de emergencia
 function ContactosEmergencia() {
-  // Definimos la lista inicial de contactos de emergencia
-  const contactosEmergenciaIniciales = [
-    { id: 1, servicio: "Policía Nacional", telefono: "911", descripcion: "Emergencias policiales" },
-    { id: 2, servicio: "Bomberos", telefono: "102", descripcion: "Incendios y rescates" },
-    { id: 3, servicio: "Ambulancia", telefono: "103", descripcion: "Emergencias médicas" },
-    { id: 4, servicio: "Cruz Roja", telefono: "104", descripcion: "Rescate y atención médica" },
-    { id: 5, servicio: "Defensa Civil", telefono: "105", descripcion: "Emergencias generales" },
-  ];
-
   const [busqueda, setBusqueda] = useState(""); // Estado para la barra de búsqueda
-  const [contactos, setContactos] = useState(contactosEmergenciaIniciales); // Estado para almacenar los contactos
+  const [contactos, setContactos] = useState([]); // Estado para almacenar los contactos
   const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [emergenciaSeleccionada, setEmergenciaSeleccionada] = useState(null);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoServicio, setNuevoServicio] = useState({ servicio: "", descripcion: "", telefono: "" });
+  const [nuevoServicio, setNuevoServicio] = useState({ nombre: "", descripcion: "", telefono: "" });
+  const [cargando, setCargando] = useState(false);
+  const [usuarioLogeado, setUsuarioLogeado] = useState(null);
+
+  // Función para obtener los servicios desde el backend
+  const obtenerServicios = async () => {
+    try {
+      setCargando(true);
+      const response = await axios.get('http://localhost:9000/servicios_emergencia', {
+        headers: {
+          "CSRF-Token": localStorage.getItem("csrfToken"),
+        },
+        withCredentials: true,
+      });
+      setContactos(response.data);
+    } catch (error) {
+      console.error('Error al obtener servicios:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'No se pudieron cargar los servicios de emergencia.'
+      });
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Cargar servicios al montar el componente
+  useEffect(() => {
+    obtenerServicios();
+  }, []);
+
+  // Obtener usuario logeado
+  useEffect(() => {
+    const fetchUsuario = async () => {
+      try {
+        const usuarioId = localStorage.getItem("usuario_id");
+        if (!usuarioId) {
+          throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
+        }
+        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { 
+          withCredentials: true,
+          headers: {
+            "CSRF-Token": localStorage.getItem("csrfToken"),
+          }
+        });
+        setUsuarioLogeado(response.data);
+      } catch (error) {
+        setUsuarioLogeado(null);
+      }
+    };
+    fetchUsuario();
+  }, []);
 
   // Filtrar los contactos según el término de búsqueda
   const contactosFiltrados = contactos.filter((contacto) =>
-    contacto.servicio.toLowerCase().includes(busqueda.toLowerCase())
+    contacto.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   // Función que simula la acción de llamar a un número de emergencia
@@ -123,7 +167,7 @@ function ContactosEmergencia() {
   };
 
   const handleAgregarServicio = async () => {
-    if (!nuevoServicio.servicio.trim() || !nuevoServicio.telefono.trim()) {
+    if (!nuevoServicio.nombre.trim() || !nuevoServicio.telefono.trim()) {
       Swal.fire({
         icon: "warning",
         title: "Campos requeridos",
@@ -131,38 +175,85 @@ function ContactosEmergencia() {
       });
       return;
     }
-    // Aquí deberías hacer la petición al backend para guardar el nuevo servicio
-    // Por ahora solo lo agregamos localmente
-    setContactos(prev => [
-      { id: Date.now(), ...nuevoServicio },
-      ...prev
-    ]);
-    setMostrarFormulario(false);
-    setNuevoServicio({ servicio: "", descripcion: "", telefono: "" });
-    Swal.fire({
-      icon: "success",
-      title: "¡Servicio agregado!",
-      text: "El servicio de emergencia se ha agregado correctamente.",
-      timer: 1500,
-      showConfirmButton: false,
-    });
+
+    try {
+      setCargando(true);
+      const csrfToken = localStorage.getItem("csrfToken");
+      const response = await axios.post('http://localhost:9000/servicios_emergencia', 
+        { ...nuevoServicio, usuario_id: usuarioLogeado?.id }, 
+        {
+          headers: {
+            "CSRF-Token": csrfToken,
+          },
+          withCredentials: true,
+        }
+      );
+      
+      // Actualizar la lista local con el nuevo servicio
+      setContactos(prev => [response.data, ...prev]);
+      setMostrarFormulario(false);
+      setNuevoServicio({ nombre: "", descripcion: "", telefono: "" });
+      
+      Swal.fire({
+        icon: "success",
+        title: "¡Servicio agregado!",
+        text: "El servicio de emergencia se ha agregado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error('Error al agregar servicio:', error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo agregar el servicio de emergencia.",
+      });
+    } finally {
+      setCargando(false);
+    }
   };
 
-  // Modal para ver detalles de emergencia
-  {mostrarModal && (
-    <div className="modal" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
-      {/* Aquí se debe renderizar <ContactosEmergenciaModal emergencia={emergenciaSeleccionada} onClose={() => setMostrarModal(false)} /> */}
-    </div>
-  )}
-
   // Función para actualizar la emergencia editada
-  const actualizarEmergencia = (emergenciaEditada) => {
-    setContactos(prev => prev.map(e => e.id === emergenciaEditada.id ? emergenciaEditada : e));
+  const actualizarEmergencia = async (emergenciaEditada) => {
+    try {
+      setCargando(true);
+      const csrfToken = localStorage.getItem("csrfToken");
+      const response = await axios.put(`http://localhost:9000/servicios_emergencia/${emergenciaEditada.id}`, 
+        emergenciaEditada,
+        {
+          headers: {
+            "CSRF-Token": csrfToken,
+          },
+          withCredentials: true,
+        }
+      );
+      
+      // Actualizar la lista local con la emergencia editada
+      setContactos(prev => prev.map(e => e.id === emergenciaEditada.id ? response.data : e));
+      
+      Swal.fire({
+        icon: "success",
+        title: "¡Servicio actualizado!",
+        text: "El servicio de emergencia se ha actualizado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error('Error al actualizar servicio:', error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo actualizar el servicio de emergencia.",
+      });
+    } finally {
+      setCargando(false);
+    }
   };
 
   // Lógica para eliminar servicios seleccionados con confirmación
   const handleEliminarServiciosSeleccionados = async () => {
     if (serviciosSeleccionados.length === 0) return;
+    
     const result = await Swal.fire({
       title: '¿Estás seguro?',
       text: `¿Deseas eliminar ${serviciosSeleccionados.length > 1 ? 'estos servicios' : 'este servicio'} de emergencia?`,
@@ -180,27 +271,53 @@ function ContactosEmergencia() {
       },
       buttonsStyling: false
     });
+    
     if (result.isConfirmed) {
-      // Efecto de "desvanecimiento" visual
-      serviciosSeleccionados.forEach(id => {
-        const card = document.querySelector(`[data-emergencia-id="${id}"]`);
-        if (card) {
-          card.style.transition = 'opacity 0.5s';
-          card.style.opacity = 0.3;
-        }
-      });
-      setTimeout(() => {
-        setContactos(prev => prev.filter(e => !serviciosSeleccionados.includes(e.id)));
-        setServiciosSeleccionados([]);
-        Swal.fire({
-          icon: 'success',
-          title: 'Eliminado',
-          text: 'El servicio(s) de emergencia ha sido eliminado.',
-          timer: 1200,
-          showConfirmButton: false,
-          background: 'rgba(255,255,255,0.95)'
+      try {
+        setCargando(true);
+        
+        // Efecto de "desvanecimiento" visual
+        serviciosSeleccionados.forEach(id => {
+          const card = document.querySelector(`[data-emergencia-id="${id}"]`);
+          if (card) {
+            card.style.transition = 'opacity 0.5s';
+            card.style.opacity = 0.3;
+          }
         });
-      }, 500);
+
+        // Eliminar servicios del backend
+        const csrfToken = localStorage.getItem("csrfToken");
+        await Promise.all(
+          serviciosSeleccionados.map(id => axios.delete(`http://localhost:9000/servicios_emergencia/${id}`, {
+            headers: {
+              "CSRF-Token": csrfToken,
+            },
+            withCredentials: true,
+          }))
+        );
+
+        setTimeout(() => {
+          setContactos(prev => prev.filter(e => !serviciosSeleccionados.includes(e.id)));
+          setServiciosSeleccionados([]);
+          Swal.fire({
+            icon: 'success',
+            title: 'Eliminado',
+            text: 'El servicio(s) de emergencia ha sido eliminado.',
+            timer: 1200,
+            showConfirmButton: false,
+            background: 'rgba(255,255,255,0.95)'
+          });
+        }, 500);
+      } catch (error) {
+        console.error('Error al eliminar servicios:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudieron eliminar algunos servicios.',
+        });
+      } finally {
+        setCargando(false);
+      }
     }
   };
 
@@ -238,19 +355,32 @@ function ContactosEmergencia() {
           </div>
           {/* Contenedor de las tarjetas de contactos */}
           <div className="container-fluid mt-5 p-4 bg-white rounded-3 shadow">
-            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-              {/* Se renderizan dinámicamente las tarjetas de los contactos filtrados */}
-              {contactosFiltrados.map((emergencia) => (
-                <EmergenciaCard
-                  key={emergencia.id}
-                  emergencia={emergencia}
-                  onSelect={handleSelectServicio}
-                  isSelected={serviciosSeleccionados.includes(emergencia.id)}
-                  onCardClick={handleCardClick}
-                  dataEmergenciaId={emergencia.id}
-                />
-              ))}
-            </div>
+            {cargando ? (
+              <div className="d-flex justify-content-center align-items-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Cargando...</span>
+                </div>
+              </div>
+            ) : contactosFiltrados.length === 0 ? (
+              <div className="text-center py-5">
+                <h5 className="text-muted">No se encontraron servicios de emergencia</h5>
+                <p className="text-muted">Intenta modificar los términos de búsqueda o agrega un nuevo servicio.</p>
+              </div>
+            ) : (
+              <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                {/* Se renderizan dinámicamente las tarjetas de los contactos filtrados */}
+                {contactosFiltrados.map((emergencia) => (
+                  <EmergenciaCard
+                    key={emergencia.id}
+                    emergencia={emergencia}
+                    onSelect={handleSelectServicio}
+                    isSelected={serviciosSeleccionados.includes(emergencia.id)}
+                    onCardClick={handleCardClick}
+                    dataEmergenciaId={emergencia.id}
+                  />
+                ))}
+              </div>
+            )}
           </div>
           {/* Modal para ver detalles de emergencia */}
           {mostrarModal && (
@@ -266,51 +396,87 @@ function ContactosEmergencia() {
           {mostrarFormulario && (
             <div className="modal" style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }}>
               <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title" style={{ fontSize: "17px", fontWeight: "bold" }}>
+                <div className="modal-content" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)" }}>
+                  <div className="modal-header" style={{ backgroundColor: "#0891b2", color: "white", padding: "30px", borderBottom: "none" }}>
+                    <h5 className="modal-title d-flex align-items-center" style={{ fontSize: "18px", fontWeight: "600", margin: 0 }}>
+                      <i className="fas fa-ambulance me-3" style={{ fontSize: "22px", color: "white" }}></i>
                       Agregar Servicio de Emergencia
                     </h5>
                     <button
                       type="button"
-                      className="btn-close"
+                      className="btn-close btn-close-white"
                       onClick={() => setMostrarFormulario(false)}
+                      style={{ fontSize: "18px" }}
                     ></button>
                   </div>
-                  <div className="modal-body">
+                  <div className="modal-body" style={{ padding: "30px" }}>
                     <div className="mb-3">
-                      <label className="form-label">Nombre del servicio de emergencia</label>
+                      <label className="form-label" style={{ fontWeight: "600", marginBottom: "8px" }}>Nombre del servicio de emergencia</label>
                       <input
                         type="text"
                         className="form-control"
-                        value={nuevoServicio.servicio}
-                        onChange={e => setNuevoServicio({ ...nuevoServicio, servicio: e.target.value })}
+                        value={nuevoServicio.nombre}
+                        onChange={e => setNuevoServicio({ ...nuevoServicio, nombre: e.target.value })}
+                        style={{ 
+                          borderRadius: "10px",
+                          border: "2px solid #e0e0e0",
+                          padding: "12px 16px",
+                          fontSize: "14px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                       />
                     </div>
                     <div className="mb-3">
-                      <label className="form-label">Descripción del servicio de emergencia</label>
+                      <label className="form-label" style={{ fontWeight: "600", marginBottom: "8px" }}>Descripción del servicio de emergencia</label>
                       <input
                         type="text"
                         className="form-control"
                         value={nuevoServicio.descripcion}
                         onChange={e => setNuevoServicio({ ...nuevoServicio, descripcion: e.target.value })}
+                        style={{ 
+                          borderRadius: "10px",
+                          border: "2px solid #e0e0e0",
+                          padding: "12px 16px",
+                          fontSize: "14px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                       />
                     </div>
                     <div className="mb-3">
-                      <label className="form-label">Teléfono del servicio de emergencia</label>
+                      <label className="form-label" style={{ fontWeight: "600", marginBottom: "8px" }}>Teléfono del servicio de emergencia</label>
                       <input
                         type="text"
                         className="form-control"
                         value={nuevoServicio.telefono}
                         onChange={e => setNuevoServicio({ ...nuevoServicio, telefono: e.target.value })}
+                        style={{ 
+                          borderRadius: "10px",
+                          border: "2px solid #e0e0e0",
+                          padding: "12px 16px",
+                          fontSize: "14px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                       />
                     </div>
                   </div>
-                  <div className="modal-footer">
+                  <div className="modal-footer" style={{ padding: "30px", borderTop: "1px solid #e0e0e0", backgroundColor: "#f8f9fa" }}>
                     <button
                       type="button"
                       className="btn btn-secondary d-flex align-items-center"
                       onClick={() => setMostrarFormulario(false)}
+                      style={{ 
+                        fontSize: "1.08rem",
+                        padding: "10px 32px",
+                        borderRadius: "14px",
+                        fontWeight: "500",
+                        transition: "all 0.3s ease"
+                      }}
                     >
                       <i className="fas fa-times me-2"></i> Cancelar
                     </button>
@@ -318,7 +484,16 @@ function ContactosEmergencia() {
                       type="button"
                       className="btn btn-primary d-flex align-items-center"
                       onClick={handleAgregarServicio}
-                      disabled={!nuevoServicio.servicio.trim() || !nuevoServicio.telefono.trim()}
+                      disabled={!nuevoServicio.nombre.trim() || !nuevoServicio.telefono.trim()}
+                      style={{ 
+                        fontSize: "1.08rem",
+                        padding: "10px 32px",
+                        borderRadius: "14px",
+                        fontWeight: "500",
+                        backgroundColor: "#0891b2",
+                        borderColor: "#0891b2",
+                        transition: "all 0.3s ease"
+                      }}
                     >
                       <i className="fas fa-save me-2"></i> Guardar
                     </button>

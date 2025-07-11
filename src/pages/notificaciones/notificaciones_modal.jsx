@@ -50,69 +50,110 @@ function NotificacionModal({ notificacion, onClose, onDelete }) {
           className="modal-content"
           style={{
             border: "none",
-            borderRadius: "16px",
-            boxShadow: "0 4px 24px #00000022",
+            borderRadius: "20px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
           }}
         >
           {/* Header */}
-          <div className="modal-header bg-dark text-white border-0 d-flex flex-column align-items-start" style={{ padding: "15px" }}>
-            <h5 className="modal-title text-truncate" style={{ maxWidth: "100%", fontSize: "16px" }}>
-              Detalles de Notificación: <strong>{notificacion.presionBotonId}</strong>
-            </h5>
-            {/* Botón para cerrar el modal */}
+          <div
+            className="modal-header text-white border-0 d-flex align-items-center position-relative"
+            style={{ 
+              background: "linear-gradient(135deg, #0891b2 0%, #0a7489 100%)",
+              padding: "30px",
+              borderRadius: "20px 20px 0 0"
+            }}
+          >
+            <div className="d-flex align-items-center w-100">
+              <i 
+                className="fas fa-bell me-3 text-white" 
+                style={{ fontSize: "28px" }}
+              ></i>
+              <h5 
+                className="modal-title text-white mb-0" 
+                style={{ fontSize: "18px", fontWeight: 600 }}
+              >
+                Detalles de Notificación: <strong>{notificacion.presionBotonId}</strong>
+              </h5>
+            </div>
             <button
               type="button"
-              className="btn-close btn-close-white position-absolute end-0 top-0 m-3"
+              className="btn-close btn-close-white position-absolute"
+              style={{ top: "20px", right: "20px", fontSize: "1.2rem" }}
               aria-label="Close"
-              onClick={onClose} // Llama a la función onClose cuando se hace clic
+              onClick={onClose}
             ></button>
           </div>
 
           {/* Body */}
-          <div className="modal-body bg-white">
-            <div className="row g-2 mb-2">
+          <div className="modal-body bg-white border-0" style={{ padding: "30px" }}>
+            <div className="row g-3 mb-2">
               <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
-                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
-                    ID:
+                <div 
+                  className="bg-light rounded-3 p-3 h-100 shadow-sm border-0"
+                  style={{ borderRadius: "15px" }}
+                >
+                  <div className="text-muted mb-1" style={{ fontSize: ".9rem", fontWeight: 600 }}>
+                    <i className="fas fa-id-card me-2 text-primary"></i>ID:
                   </div>
-                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.id}</div>
+                  <div className="fw-semibold" style={{ fontSize: ".95rem" }}>{notificacion.id}</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
-                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                <div 
+                  className="bg-light rounded-3 p-3 h-100 shadow-sm border-0"
+                  style={{ borderRadius: "15px" }}
+                >
+                  <div className="text-muted mb-1" style={{ fontSize: ".9rem", fontWeight: 600 }}>
                     <i className="fas fa-hand-pointer me-2 text-primary"></i>Presión Botón ID:
                   </div>
-                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.presionBotonId}</div>
+                  <div className="fw-semibold" style={{ fontSize: ".95rem" }}>{notificacion.presionBotonId}</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
-                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                <div 
+                  className="bg-light rounded-3 p-3 h-100 shadow-sm border-0"
+                  style={{ borderRadius: "15px" }}
+                >
+                  <div className="text-muted mb-1" style={{ fontSize: ".9rem", fontWeight: 600 }}>
                     <i className="fas fa-user me-2 text-success"></i>Cliente Notificado ID:
                   </div>
-                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.clienteNotificadoId}</div>
+                  <div className="fw-semibold" style={{ fontSize: ".95rem" }}>{notificacion.clienteNotificadoId}</div>
                 </div>
               </div>
               <div className="col-12 col-sm-6">
-                <div className="bg-light rounded-3 p-2 h-100 shadow-sm">
-                  <div className="text-muted mb-1" style={{ fontSize: ".98rem", fontWeight: 600 }}>
+                <div 
+                  className="bg-light rounded-3 p-3 h-100 shadow-sm border-0"
+                  style={{ borderRadius: "15px" }}
+                >
+                  <div className="text-muted mb-1" style={{ fontSize: ".9rem", fontWeight: 600 }}>
                     <i className="fas fa-bell me-2 text-warning"></i>Notificaciones Recibidas:
                   </div>
-                  <div className="fw-semibold" style={{ fontSize: ".98rem" }}>{notificacion.notificacionesRecibidas}</div>
+                  <div className="fw-semibold" style={{ fontSize: ".95rem" }}>{notificacion.notificacionesRecibidas}</div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="modal-footer bg-light justify-content-center">
-            {/* Botón para eliminar la notificación */}
+          <div 
+            className="modal-footer bg-light justify-content-center border-0"
+            style={{ 
+              padding: "20px 30px 30px 30px",
+              borderRadius: "0 0 20px 20px",
+              backgroundColor: "#f8f9fa"
+            }}
+          >
             <button
-              className="btn btn-danger"
+              className="btn btn-danger shadow-sm"
               onClick={confirmarEliminacion}
-              style={{ fontSize: "15px" }}
+              style={{ 
+                fontSize: "15px",
+                padding: "10px 20px",
+                borderRadius: "10px",
+                border: "none",
+                fontWeight: 600,
+                minWidth: "120px"
+              }}
             >
               <i className="fas fa-trash me-1"></i> Eliminar
             </button>

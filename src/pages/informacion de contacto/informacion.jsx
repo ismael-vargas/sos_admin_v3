@@ -336,41 +336,70 @@ function InformacionContactosUsuarios() {
           }}
         >
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Agregar Usuario</h5>
+            <div className="modal-content" style={{ borderRadius: "20px", overflow: "hidden", boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)" }}>
+              <div className="modal-header" style={{ backgroundColor: "#0891b2", color: "white", padding: "30px", borderBottom: "none" }}>
+                <h5 className="modal-title d-flex align-items-center" style={{ fontSize: "18px", fontWeight: "600", margin: 0 }}>
+                  <i className="fas fa-user-circle me-3" style={{ fontSize: "22px", color: "white" }}></i>
+                  Agregar Usuario
+                </h5>
                 <button
                   type="button"
-                  className="btn-close"
+                  className="btn-close btn-close-white"
                   onClick={() => setMostrarFormulario(false)}
+                  style={{ fontSize: "18px" }}
                 ></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={{ padding: "30px" }}>
                 <div className="mb-3">
-                  <label className="form-label">Nombre</label>
+                  <label className="form-label" style={{ fontWeight: "600", marginBottom: "8px" }}>Nombre</label>
                   <input
                     type="text"
                     className="form-control"
                     value={nuevoUsuario.nombre}
                     onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })}
+                    style={{ 
+                      borderRadius: "10px",
+                      border: "2px solid #e0e0e0",
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      transition: "border-color 0.3s ease"
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                    onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                   />
                 </div>
                 <div className="mb-3">
-                  <label className="form-label">Número</label>
+                  <label className="form-label" style={{ fontWeight: "600", marginBottom: "8px" }}>Número</label>
                   <input
                     type="text"
                     className="form-control"
                     value={nuevoUsuario.numero}
                     onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, numero: e.target.value })}
+                    style={{ 
+                      borderRadius: "10px",
+                      border: "2px solid #e0e0e0",
+                      padding: "12px 16px",
+                      fontSize: "14px",
+                      transition: "border-color 0.3s ease"
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                    onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                   />
                 </div>
                 {/* El campo de Usuario ID ya no se muestra */}
               </div>
-              <div className="modal-footer">
+              <div className="modal-footer" style={{ padding: "30px", borderTop: "1px solid #e0e0e0", backgroundColor: "#f8f9fa" }}>
                 <button
                   type="button"
                   className="btn btn-secondary d-flex align-items-center"
                   onClick={() => setMostrarFormulario(false)}
+                  style={{ 
+                    fontSize: "1.08rem",
+                    padding: "10px 32px",
+                    borderRadius: "14px",
+                    fontWeight: "500",
+                    transition: "all 0.3s ease"
+                  }}
                 >
                   <i className="fas fa-times me-2"></i> Cancelar
                 </button>
@@ -378,6 +407,15 @@ function InformacionContactosUsuarios() {
                   type="button"
                   className="btn btn-primary d-flex align-items-center"
                   onClick={handleGuardarNuevoUsuario}
+                  style={{ 
+                    fontSize: "1.08rem",
+                    padding: "10px 32px",
+                    borderRadius: "14px",
+                    fontWeight: "500",
+                    backgroundColor: "#0891b2",
+                    borderColor: "#0891b2",
+                    transition: "all 0.3s ease"
+                  }}
                 >
                   <i className="fas fa-save me-2"></i> Guardar
                 </button>

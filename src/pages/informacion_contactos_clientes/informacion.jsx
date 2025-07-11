@@ -1,12 +1,16 @@
 /* informacion_contacto_cliente.jsx */
 /* -------------------*/
 // Importación de bibliotecas y componentes necesarios
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import InformacionModal from "./informacion_modal.jsx";
-import Contacto from "../../assets/img/con_cliente.jpg";
+import axios from "axios";
+import Swal from 'sweetalert2';
 import "../../assets/scss/informacion.scss";
+
+const BASE_IMG_URL = "/assets/img/";
+const DEFAULT_IMG = "con_cliente.jpg";
 
 // Componente para la barra de búsqueda
 function Buscador({ busqueda, setBusqueda }) {
@@ -50,7 +54,7 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
         }}
       >
         <img
-          src={informacion.imagen}
+          src={`${BASE_IMG_URL}${DEFAULT_IMG}`}
           className="card-img-top"
           alt={`Imagen de ${informacion.nombre}`}
           style={{ objectFit: "cover", height: "200px" }}
@@ -89,31 +93,113 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
 
 // Componente principal
 function InformacionContactosClientes() {
-  const initialInformaciones = [
-    { id: 1, nombre: "Daniela Tarapues", numero: "123-456-789", imagen: Contacto, eliminado: false },
-    { id: 2, nombre: "Omar Chicaiza", numero: "987-654-321", imagen: Contacto, eliminado: false },
-    { id: 3, nombre: "Aylin Mera", numero: "555-555-555", imagen: Contacto, eliminado: false },
-  ];
-
   const [busqueda, setBusqueda] = useState("");
-  const [informaciones, setInformaciones] = useState(initialInformaciones);
+  const [informaciones, setInformaciones] = useState([]);
   const [informacionSeleccionada, setInformacionSeleccionada] = useState(null);
   const [clientesSeleccionados, setClientesSeleccionados] = useState([]);
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoCliente, setNuevoCliente] = useState({ id: "", nombre: "", numero: "" });
+  const [loading, setLoading] = useState(true);
+
+  // Cargar clientes desde la API
+  useEffect(() => {
+    const cargarClientes = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:9000/clientes', {
+          withCredentials: true
+        });
+        
+        // Mapear los datos al formato requerido por el componente
+        const clientesFormateados = response.data.map(cliente => ({
+          id: cliente.id,
+          nombre: cliente.nombre,
+          eliminado: cliente.estado_eliminado === 'eliminado'
+        }));
+        
+        setInformaciones(clientesFormateados);
+      } catch (error) {
+        console.error('Error al cargar clientes:', error);
+        Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarClientes();
+  }, []);
 
   const informacionesFiltradas = informaciones.filter((informacion) =>
     informacion.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const handleEliminarInformacion = () => {
-    const informacionesActualizadas = informaciones.map((informacion) =>
-      clientesSeleccionados.includes(informacion.id)
-        ? { ...informacion, eliminado: true }
-        : informacion
-    );
-    setInformaciones(informacionesActualizadas);
-    setClientesSeleccionados([]);
+  const handleEliminarInformacion = async () => {
+    try {
+      // Confirmar eliminación
+      const mensaje = clientesSeleccionados.length === 1 
+        ? '¿Desea eliminar todos los números de emergencia de este cliente?'
+        : `¿Desea eliminar todos los números de emergencia de estos ${clientesSeleccionados.length} clientes?`;
+        
+      const result = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: mensaje,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#0891b2',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      if (result.isConfirmed) {
+        // 1. Obtener token CSRF
+        const csrfRes = await axios.get('http://localhost:9000/csrf-token', {
+          withCredentials: true
+        });
+        const csrfToken = csrfRes.data.csrfToken;
+
+        // 2. Configurar headers
+        const headers = {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken,
+          'csrf-token': csrfToken
+        };
+
+        // 3. Para cada cliente seleccionado, eliminar sus contactos de emergencia
+        for (const clienteId of clientesSeleccionados) {
+          try {
+            // Obtener contactos de emergencia del cliente
+            const contactosResponse = await axios.get(`http://localhost:9000/contactos_emergencias/cliente/${clienteId}`, {
+              withCredentials: true
+            });
+            
+            // Eliminar cada contacto de emergencia
+            const contactosEliminacion = contactosResponse.data.map(contacto =>
+              axios.delete(`http://localhost:9000/contactos_emergencias/${contacto.id}`, {
+                headers: headers,
+                withCredentials: true
+              })
+            );
+            
+            await Promise.all(contactosEliminacion);
+            console.log(`Contactos de emergencia eliminados para cliente ${clienteId}`);
+          } catch (error) {
+            console.error(`Error al eliminar contactos para cliente ${clienteId}:`, error);
+          }
+        }
+
+        // 4. NO marcar como eliminado - solo limpiar selección
+        // Los clientes siguen existiendo, solo eliminamos sus contactos de emergencia
+        setClientesSeleccionados([]);
+        
+        Swal.fire('Eliminado', 'Los números de emergencia han sido eliminados', 'success');
+      }
+    } catch (error) {
+      console.error('Error al eliminar contactos:', error.response?.data || error.message);
+      Swal.fire(
+        'Error', 
+        error.response?.data?.message || error.response?.data?.error || 'No se pudieron eliminar los contactos',
+        'error'
+      );
+    }
   };
 
   const handleSeleccionarCliente = (id) => {
@@ -122,23 +208,6 @@ function InformacionContactosClientes() {
         ? prevSeleccionados.filter((clienteId) => clienteId !== id)
         : [...prevSeleccionados, id]
     );
-  };
-
-  const handleAgregarInformacion = () => {
-    setMostrarFormulario(true);
-  };
-
-  const handleGuardarNuevoCliente = () => {
-    if (nuevoCliente.nombre && nuevoCliente.numero) {
-      setInformaciones((prevInformaciones) => [
-        { id: prevInformaciones.length + 1, ...nuevoCliente, eliminado: false, imagen: Contacto },
-        ...prevInformaciones,
-      ]);
-      setNuevoCliente({ id: "", nombre: "", numero: "" });
-      setMostrarFormulario(false);
-    } else {
-      alert("Por favor complete todos los campos.");
-    }
   };
 
   return (
@@ -164,24 +233,35 @@ function InformacionContactosClientes() {
               >
                 <i className="bi bi-trash"></i> Eliminar
               </button>
-            
             </div>
           </div>
 
-          {/* Renderiza las tarjetas de contactos */}
-
-          <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-            {informacionesFiltradas.map((informacion) => (
-              <InformacionCard
-                key={informacion.id}
-                informacion={informacion}
-                onFlechaClick={setInformacionSeleccionada}
-                seleccionado={clientesSeleccionados.includes(informacion.id)}
-                onSelect={handleSeleccionarCliente}
-                eliminado={informacion.eliminado}
-              />
-            ))}
-          </div>
+          {/* Mostrar estado de carga */}
+          {loading ? (
+            <div className="text-center p-5">
+              <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Cargando...</span>
+              </div>
+              <p className="mt-2">Cargando clientes...</p>
+            </div>
+          ) : informacionesFiltradas.length === 0 ? (
+            <div className="text-center p-5">
+              <p>No se encontraron clientes.</p>
+            </div>
+          ) : (
+            <div className="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+              {informacionesFiltradas.map((informacion) => (
+                <InformacionCard
+                  key={informacion.id}
+                  informacion={informacion}
+                  onFlechaClick={setInformacionSeleccionada}
+                  seleccionado={clientesSeleccionados.includes(informacion.id)}
+                  onSelect={handleSeleccionarCliente}
+                  eliminado={informacion.eliminado}
+                />
+              ))}
+            </div>
+          )}
         </PanelBody>
       </Panel>
 
@@ -190,82 +270,6 @@ function InformacionContactosClientes() {
           informacion={informacionSeleccionada}
           onClose={() => setInformacionSeleccionada(null)}
         />
-      )}
-
-      {mostrarFormulario && (
-        <div
-          className="modal"
-          style={{
-            display: "block",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-          }}
-        >
-          <div
-            className="modal-dialog modal-dialog-centered" // Esto centra el modal
-            style={{
-              zIndex: 1050,
-              maxWidth: "500px", // Máximo tamaño
-              width: "100%", // Siempre ocupa el 100% del ancho
-            }}
-          >
-            <div
-              className="modal-content"
-              style={{
-                border: "none", // Sin bordes
-                borderRadius: "0", // Sin bordes redondeados
-              }}
-            >
-              <div className="modal-header">
-                <h5 className="modal-title">Agregar Cliente</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setMostrarFormulario(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label">Nombre</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoCliente.nombre}
-                    onChange={(e) =>
-                      setNuevoCliente({ ...nuevoCliente, nombre: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Número</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoCliente.numero}
-                    onChange={(e) =>
-                      setNuevoCliente({ ...nuevoCliente, numero: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setMostrarFormulario(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleGuardarNuevoCliente}
-                >
-                  Guardar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

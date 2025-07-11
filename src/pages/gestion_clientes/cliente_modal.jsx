@@ -6,7 +6,7 @@ import { FaPhoneAlt, FaEnvelope, FaIdCard, FaMapMarkerAlt, FaHandsHelping } from
 
 const BASE_IMG_URL = "/assets/img/"; // URL base para las imágenes del cliente
 
-function ClienteModal({ cliente, onClose, onUpdateCliente }) {
+function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
   // Use the actual client's 'estado' and 'estado_eliminado' from props
   // Ensure these fields exist on the client object, if not, provide a default
   const [estadoLocal, setEstadoLocal] = useState(cliente.estado || "activo");
@@ -21,7 +21,7 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
     const fetchCsrfToken = async () => {
       try {
         axios.defaults.withCredentials = true;
-        const response = await axios.get('http://192.168.1.31:9000/csrf-token');
+        const response = await axios.get('http://localhost:9000/csrf-token');
         setCsrfToken(response.data.csrfToken);
       } catch (error) {
         console.error('Error al obtener el token CSRF en ClienteModal:', error.response?.data || error.message);
@@ -36,7 +36,7 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
     const fetchNumeros = async () => {
       setLoadingNumeros(true);
       try {
-        const res = await axios.get(`http://192.168.1.31:9000/clientes_numeros/cliente/${cliente.id}`);
+        const res = await axios.get(`http://localhost:9000/clientes_numeros/cliente/${cliente.id}`);
         setNumerosCliente(res.data);
       } catch (err) {
         setNumerosCliente([]);
@@ -51,9 +51,15 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
   const guardarEstado = async () => {
     try {
       const response = await axios.put(
-        `http://192.168.1.31:9000/clientes/${cliente.id}/estado`, // Assuming this endpoint
+        `http://localhost:9000/clientes/${cliente.id}/estado`, // Assuming this endpoint
         { estado: estadoLocal },
-        { headers: { 'X-CSRF-Token': csrfToken } }
+        { 
+          headers: { 
+            'X-CSRF-Token': csrfToken,
+            'csrf-token': csrfToken 
+          },
+          withCredentials: true
+        }
       );
       if (response.status === 200) {
         alert(`Estado actualizado a: ${estadoLocal}`);
@@ -70,20 +76,50 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
 
   const handleEliminarCliente = async () => {
     try {
+      // Obtener token CSRF fresco antes de eliminar (como dispositivos)
+      console.log('Obteniendo token CSRF fresco para eliminación de cliente...');
+      const tokenResponse = await axios.get('http://localhost:9000/csrf-token', {
+        withCredentials: true
+      });
+      const tokenFresco = tokenResponse.data.csrfToken;
+      console.log(`Token CSRF fresco obtenido: ${tokenFresco}`);
+
+      console.log(`=== ELIMINANDO CLIENTE ${cliente.id} ===`);
+      console.log(`Token CSRF enviado: ${tokenFresco}`);
+      console.log(`URL: http://localhost:9000/clientes/${cliente.id}`);
+
       const response = await axios.put(
-        `http://192.168.1.31:9000/clientes/${cliente.id}/estado`,
+        `http://localhost:9000/clientes/${cliente.id}`,
         { estado_eliminado: 'eliminado' },
-        { headers: { 'X-CSRF-Token': csrfToken } }
+        { 
+          headers: { 
+            'X-CSRF-Token': tokenFresco,
+            'csrf-token': tokenFresco,  // Agregar ambos nombres como dispositivos
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
+        }
       );
+      
       if (response.status === 200) {
         setIsDeletedLocally(true);
-        onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' });
+        // Llamar a onDelete si existe (para actualizar la lista principal)
+        if (onDelete) {
+          onDelete(cliente.id);
+        } else {
+          onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' });
+        }
         // No cerrar el modal aquí, para que el usuario vea el mensaje de éxito
       } else {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar cliente.' });
       }
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar cliente.' });
+      console.error('Error al eliminar cliente:', error);
+      Swal.fire({ 
+        icon: 'error', 
+        title: 'Error', 
+        text: `Error al eliminar cliente: ${error.response?.data?.message || error.message}` 
+      });
     }
   };
 
@@ -96,15 +132,37 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
     >
       <div
         className="modal-dialog modal-xl"
-        style={{ maxWidth: "960px" }}
+        style={{ maxWidth: "900px" }}
         role="document"
       >
-        <div className="modal-content">
-          <div className="modal-header bg-dark text-white border-0">
+        <div 
+          className="modal-content"
+          style={{
+            borderRadius: "20px",
+            border: "none",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
+            overflow: 'hidden',
+          }}
+        >
+          <div 
+            className="modal-header border-0"
+            style={{ 
+              background: "#0891b2",
+              color: "white",
+              padding: "20px 30px",
+              borderRadius: "20px 20px 0 0"
+            }}
+          >
             <h5
               className="modal-title text-truncate"
-              style={{ maxWidth: "100%", fontSize: "14px" }}
+              style={{ 
+                maxWidth: "100%", 
+                fontSize: "18px",
+                fontWeight: "600",
+                margin: 0
+              }}
             >
+              <i className="fas fa-user-tie me-2"></i>
               Detalles del Cliente: <strong>{cliente.nombre}</strong>
               {isDeletedLocally && <span className="ms-2 badge bg-danger">ELIMINADO</span>}
             </h5>
@@ -113,16 +171,26 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
               className="btn-close btn-close-white"
               aria-label="Close"
               onClick={onClose}
+              style={{
+                opacity: "0.8",
+                fontSize: "1.2rem"
+              }}
             ></button>
           </div>
 
-          <div className="modal-body bg-white">
+          <div className="modal-body bg-white" style={{ padding: "30px" }}>
             <div className="text-center mb-4">
               <img
                 src={`${BASE_IMG_URL}${cliente.imagen || 'default_user.jpg'}`}
                 alt={`Imagen de ${cliente.nombre}`}
                 className="rounded-circle shadow"
-                style={{ width: "120px", height: "120px", objectFit: "cover", border: "4px solid #e0e0e0" }}
+                style={{ 
+                  width: "120px", 
+                  height: "120px", 
+                  objectFit: "cover", 
+                  border: "4px solid #f8f9fa",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.15)"
+                }}
                 loading="lazy"
               />
             </div>
@@ -196,7 +264,14 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
             </div>
           </div>
 
-          <div className="modal-footer bg-light justify-content-center">
+          <div 
+            className="modal-footer bg-light justify-content-center"
+            style={{ 
+              padding: "20px 30px",
+              borderRadius: "0 0 20px 20px",
+              borderTop: "1px solid #dee2e6"
+            }}
+          >
             {/* Eliminar botón Editar Estado, solo dejar Eliminar Cliente centrado */}
             <button
               className="btn btn-danger d-flex align-items-center justify-content-center"
@@ -217,13 +292,18 @@ function ClienteModal({ cliente, onClose, onUpdateCliente }) {
                     icon: "success",
                     title: "Cliente Eliminado",
                     text: `El cliente ha sido eliminado correctamente.`,
-                    timer: 1200,
+                    timer: 1500,
                     showConfirmButton: false
                   });
-                  onClose(); // Ahora sí cerramos el modal después del mensaje de éxito
+                  onClose(); // Cerrar el modal después del mensaje de éxito
                 }
               }}
-              style={{ fontSize: "1.08rem", padding: "10px 32px", borderRadius: "24px" }}
+              style={{ 
+                fontSize: "1.08rem", 
+                padding: "10px 32px", 
+                borderRadius: "14px",
+                fontWeight: "600"
+              }}
               disabled={isDeletedLocally}
             >
               <i className="fas fa-trash-alt me-1"></i> {isDeletedLocally ? 'Cliente Eliminado' : 'Eliminar Cliente'}
@@ -253,6 +333,7 @@ ClienteModal.propTypes = {
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onUpdateCliente: PropTypes.func.isRequired, // New prop to update client in parent
+  onDelete: PropTypes.func, // Optional prop for deletion callback
 };
 
 export default ClienteModal;

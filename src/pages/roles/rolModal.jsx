@@ -69,23 +69,40 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
       <div
         className="modal-dialog"
         style={{
-          maxWidth: "800px",
-          borderRadius: "0px",
+          maxWidth: "900px",
+          borderRadius: "20px",
           overflow: "hidden",
           border: "none",
         }}
         role="document"
       >
-        <div className="modal-content" style={{ border: "none", boxShadow: "none" }}>
+        <div 
+          className="modal-content" 
+          style={{ 
+            border: "none", 
+            borderRadius: "20px",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)" 
+          }}
+        >
           {/* Encabezado del modal */}
-          <div className="modal-header bg-dark text-white border-0" style={{ padding: "15px" }}>
+          <div 
+            className="modal-header border-0" 
+            style={{ 
+              background: "#0891b2",
+              color: "white",
+              padding: "20px 30px",
+              borderRadius: "20px 20px 0 0"
+            }}
+          >
             <h5
               className="modal-title"
               style={{
-                fontSize: "15px",
-                fontWeight: "bold",
+                fontSize: "18px",
+                fontWeight: "600",
+                margin: 0
               }}
             >
+              <i className="fas fa-user-shield me-2"></i>
               Detalles del Rol: <strong>{rol.nombre}</strong>
             </h5>
             <button
@@ -93,27 +110,35 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
               className="btn-close btn-close-white"
               aria-label="Close"
               onClick={cerrarModal}
+              style={{
+                opacity: "0.8",
+                fontSize: "1.2rem"
+              }}
             ></button>
           </div>
 
           {/* Cuerpo del modal */}
-          <div className="modal-body bg-white" style={{ padding: "20px" }}>
+          <div className="modal-body bg-white" style={{ padding: "30px" }}>
             <div className="text-center mb-4">
               <img
                 src="/assets/img/usuario.jpg" // Ruta de la imagen del rol
                 alt={`Imagen de ${rol.nombre}`}
-                className="rounded-circle shadow"
+                className="rounded-circle"
                 style={{
-                  width: "100px",
-                  height: "100px",
+                  width: "120px",
+                  height: "120px",
                   objectFit: "cover",
+                  boxShadow: "0 8px 16px rgba(0, 0, 0, 0.15)",
+                  border: "4px solid #f8f9fa"
                 }}
               />
             </div>
-            <table className="table table-borderless mx-auto" style={{ width: "100%" }}>
+            <table className="table table-borderless mx-auto" style={{ width: "100%", fontSize: "16px" }}>
               <tbody>
                 <tr>
-                  <th style={{ textAlign: "left", width: "30%" }}>Nombre del Rol:</th>
+                  <th style={{ textAlign: "left", width: "30%", color: "#495057", fontWeight: "600" }}>
+                    Nombre del Rol:
+                  </th>
                   <td style={{ textAlign: "left" }}>
                     {editandoRol ? (
                       <input
@@ -121,9 +146,18 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
                         value={nombreRol}
                         onChange={(e) => setNombreRol(e.target.value)}
                         className="form-control"
+                        style={{
+                          borderRadius: "10px",
+                          border: "2px solid #e9ecef",
+                          padding: "10px 15px",
+                          fontSize: "16px",
+                          transition: "border-color 0.3s ease"
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#0891b2"}
+                        onBlur={(e) => e.target.style.borderColor = "#e9ecef"}
                       />
                     ) : (
-                      <span>{rol.nombre}</span>
+                      <span style={{ color: "#212529", fontWeight: "500" }}>{rol.nombre}</span>
                     )}
                   </td>
                 </tr>
@@ -133,17 +167,39 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
           </div>
 
           {/* Footer del modal */}
-          <div className="modal-footer bg-light d-flex justify-content-center">
+          <div 
+            className="modal-footer bg-light d-flex justify-content-center"
+            style={{ 
+              padding: "20px 30px",
+              borderRadius: "0 0 20px 20px",
+              borderTop: "1px solid #dee2e6"
+            }}
+          >
             {!editandoRol ? (
               <button
                 className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
                 onClick={() => setEditandoRol(true)}
+                style={{ 
+                  fontWeight: 600, 
+                  fontSize: "1.08rem", 
+                  padding: "10px 32px", 
+                  borderRadius: "14px" 
+                }}
               >
-                <i className="fas fa-edit me-2"></i> Editar Rol
+                <i className="fas fa-edit me-1"></i> Editar Rol
               </button>
             ) : (
-              <button className="btn btn-primary me-2 d-flex align-items-center justify-content-center" onClick={handleSave}>
-                <i className="fas fa-save me-2"></i> Guardar Rol
+              <button 
+                className="btn btn-primary me-2 d-flex align-items-center justify-content-center" 
+                onClick={handleSave}
+                style={{ 
+                  fontWeight: 600, 
+                  fontSize: "1.08rem", 
+                  padding: "10px 32px", 
+                  borderRadius: "14px" 
+                }}
+              >
+                <i className="fas fa-save me-1"></i> Guardar Rol
               </button>
             )}
           </div>
