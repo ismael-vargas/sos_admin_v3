@@ -95,11 +95,37 @@ function ContactosEmergencia() {
   const [cargando, setCargando] = useState(false);
   const [usuarioLogeado, setUsuarioLogeado] = useState(null);
 
+  // Obtener CSRF token al cargar el componente
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await axios.get("http://localhost:1000/csrf-token", { withCredentials: true });
+        // Ajuste para la estructura de respuesta del backend
+        const token = response.data.data?.csrfToken || response.data.csrfToken; 
+        if (token) {
+          localStorage.setItem("csrfToken", token);
+        } else {
+          throw new Error("CSRF token not found in response.");
+        }
+      } catch (error) {
+        console.error("Error al obtener el token CSRF:", error.message);
+        Swal.fire({
+          icon: "error",
+          title: "Error al cargar token CSRF",
+          text: "Hubo un error al obtener el token de seguridad. Por favor, inténtelo de nuevo.",
+        });
+      }
+    };
+
+    fetchCsrfToken();
+  }, []);
+
   // Función para obtener los servicios desde el backend
   const obtenerServicios = async () => {
     try {
       setCargando(true);
-      const response = await axios.get('http://localhost:9000/servicios_emergencia', {
+      // Ruta GET para listar todos los servicios de emergencia
+      const response = await axios.get('http://localhost:1000/servicios_emergencia/listar', {
         headers: {
           "CSRF-Token": localStorage.getItem("csrfToken"),
         },
@@ -107,7 +133,7 @@ function ContactosEmergencia() {
       });
       setContactos(response.data);
     } catch (error) {
-      console.error('Error al obtener servicios:', error);
+      console.error('Error al obtener servicios:', error.message);
       Swal.fire({
         icon: 'error',
         title: 'Error',
@@ -131,7 +157,8 @@ function ContactosEmergencia() {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { 
+        // Ruta corregida para obtener los detalles del usuario
+        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { 
           withCredentials: true,
           headers: {
             "CSRF-Token": localStorage.getItem("csrfToken"),
@@ -139,6 +166,7 @@ function ContactosEmergencia() {
         });
         setUsuarioLogeado(response.data);
       } catch (error) {
+        console.error("Error al obtener el usuario logeado:", error.message);
         setUsuarioLogeado(null);
       }
     };
@@ -149,12 +177,6 @@ function ContactosEmergencia() {
   const contactosFiltrados = contactos.filter((contacto) =>
     contacto.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
-
-  // Función que simula la acción de llamar a un número de emergencia
-  const manejarLlamada = (telefono) => {
-    alert(`Llamando al número de emergencia: ${telefono}`);
-    console.log(`Realizando llamada al número: ${telefono}`);
-  };
 
   const handleSelectServicio = (id) => {
     setServiciosSeleccionados((prev) =>
@@ -176,11 +198,26 @@ function ContactosEmergencia() {
       return;
     }
 
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     try {
       setCargando(true);
-      const csrfToken = localStorage.getItem("csrfToken");
-      const response = await axios.post('http://localhost:9000/servicios_emergencia', 
-        { ...nuevoServicio, usuario_id: usuarioLogeado?.id }, 
+      // Ruta POST para crear un nuevo servicio de emergencia
+      const response = await axios.post('http://localhost:1000/servicios_emergencia/crear', 
+        { 
+          nombre: nuevoServicio.nombre,
+          descripcion: nuevoServicio.descripcion,
+          telefono: nuevoServicio.telefono,
+          usuarioId: usuarioLogeado?.id // Asegura que se envía el ID del usuario logeado
+        }, 
         {
           headers: {
             "CSRF-Token": csrfToken,
@@ -189,8 +226,9 @@ function ContactosEmergencia() {
         }
       );
       
-      // Actualizar la lista local con el nuevo servicio
-      setContactos(prev => [response.data, ...prev]);
+      // Después de agregar, recargar la lista completa para reflejar los cambios
+      obtenerServicios(); 
+
       setMostrarFormulario(false);
       setNuevoServicio({ nombre: "", descripcion: "", telefono: "" });
       
@@ -202,11 +240,11 @@ function ContactosEmergencia() {
         showConfirmButton: false,
       });
     } catch (error) {
-      console.error('Error al agregar servicio:', error);
+      console.error('Error al agregar servicio:', error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo agregar el servicio de emergencia.",
+        text: error.response?.data?.message || "No se pudo agregar el servicio de emergencia.",
       });
     } finally {
       setCargando(false);
@@ -215,11 +253,21 @@ function ContactosEmergencia() {
 
   // Función para actualizar la emergencia editada
   const actualizarEmergencia = async (emergenciaEditada) => {
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     try {
       setCargando(true);
-      const csrfToken = localStorage.getItem("csrfToken");
-      const response = await axios.put(`http://localhost:9000/servicios_emergencia/${emergenciaEditada.id}`, 
-        emergenciaEditada,
+      // Ruta PUT para actualizar un servicio de emergencia
+      const response = await axios.put(`http://localhost:1000/servicios_emergencia/actualizar/${emergenciaEditada.id}`, 
+        emergenciaEditada, // El objeto ya contiene nombre, descripcion, telefono
         {
           headers: {
             "CSRF-Token": csrfToken,
@@ -229,7 +277,8 @@ function ContactosEmergencia() {
       );
       
       // Actualizar la lista local con la emergencia editada
-      setContactos(prev => prev.map(e => e.id === emergenciaEditada.id ? response.data : e));
+      // Se asume que el backend devuelve el objeto actualizado en response.data.servicio
+      setContactos(prev => prev.map(e => e.id === emergenciaEditada.id ? response.data.servicio : e));
       
       Swal.fire({
         icon: "success",
@@ -239,11 +288,11 @@ function ContactosEmergencia() {
         showConfirmButton: false,
       });
     } catch (error) {
-      console.error('Error al actualizar servicio:', error);
+      console.error('Error al actualizar servicio:', error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudo actualizar el servicio de emergencia.",
+        text: error.response?.data?.message || "No se pudo actualizar el servicio de emergencia.",
       });
     } finally {
       setCargando(false);
@@ -273,10 +322,20 @@ function ContactosEmergencia() {
     });
     
     if (result.isConfirmed) {
+      const csrfToken = localStorage.getItem("csrfToken");
+      if (!csrfToken) {
+          Swal.fire({
+              icon: "error",
+              title: "Error de seguridad",
+              text: "Token CSRF no disponible. Recargue la página.",
+          });
+          return;
+      }
+
       try {
         setCargando(true);
         
-        // Efecto de "desvanecimiento" visual
+        // Efecto de "desvanecimiento" visual (optimista)
         serviciosSeleccionados.forEach(id => {
           const card = document.querySelector(`[data-emergencia-id="${id}"]`);
           if (card) {
@@ -286,9 +345,8 @@ function ContactosEmergencia() {
         });
 
         // Eliminar servicios del backend
-        const csrfToken = localStorage.getItem("csrfToken");
         await Promise.all(
-          serviciosSeleccionados.map(id => axios.delete(`http://localhost:9000/servicios_emergencia/${id}`, {
+          serviciosSeleccionados.map(id => axios.delete(`http://localhost:1000/servicios_emergencia/eliminar/${id}`, {
             headers: {
               "CSRF-Token": csrfToken,
             },
@@ -297,6 +355,7 @@ function ContactosEmergencia() {
         );
 
         setTimeout(() => {
+          // Filtrar los servicios eliminados de la lista local
           setContactos(prev => prev.filter(e => !serviciosSeleccionados.includes(e.id)));
           setServiciosSeleccionados([]);
           Swal.fire({
@@ -309,12 +368,14 @@ function ContactosEmergencia() {
           });
         }, 500);
       } catch (error) {
-        console.error('Error al eliminar servicios:', error);
+        console.error('Error al eliminar servicios:', error.response?.data?.message || error.message);
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: 'No se pudieron eliminar algunos servicios.',
+          text: error.response?.data?.message || 'No se pudieron eliminar algunos servicios.',
         });
+        // Si falla, recargar para asegurar la consistencia
+        obtenerServicios();
       } finally {
         setCargando(false);
       }

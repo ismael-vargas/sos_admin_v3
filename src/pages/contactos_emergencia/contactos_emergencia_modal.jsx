@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import Swal from "sweetalert2";
 import { FaPhoneAlt, FaAmbulance, FaRegStickyNote } from "react-icons/fa";
+import axios from "axios"; // Importar axios aquí si se usa directamente para CSRF token
 
 function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
   // Inicializamos el estado del formulario con 'nombre' en lugar de 'servicio'
   // El backend espera 'nombre', no 'servicio'.
   const [form, setForm] = useState({
-    nombre: emergencia.nombre || "", // <-- CORREGIDO: Usamos 'nombre'
+    nombre: emergencia.nombre || "", 
     descripcion: emergencia.descripcion || "",
     telefono: emergencia.telefono || ""
   });
@@ -19,7 +20,7 @@ function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
 
   const handleSave = async () => {
     // La validación ahora comprueba 'nombre' y 'telefono'
-    if (!form.nombre.trim() || !form.telefono.trim()) { // <-- CORREGIDO: Usamos 'nombre'
+    if (!form.nombre.trim() || !form.telefono.trim()) { 
       Swal.fire({
         icon: "warning",
         title: "Campos requeridos",
@@ -34,13 +35,12 @@ function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
     if (onSave) {
       // Pasamos el objeto de emergencia original junto con los datos del formulario,
       // asegurando que 'id' y otras propiedades originales se mantengan.
-      await onSave({ ...emergencia, ...form }); // 'onSave' debería ser una promesa
+      // El padre es responsable de enviar el CSRF token.
+      await onSave({ ...emergencia, ...form }); 
     }
 
     setEditando(false);
     onClose(); // Cerramos el modal después de guardar
-    
-  
   };
 
   return (
@@ -204,12 +204,12 @@ function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
 ContactosEmergenciaModal.propTypes = {
   emergencia: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-    nombre: PropTypes.string, // <-- CORREGIDO: Usamos 'nombre'
+    nombre: PropTypes.string, 
     descripcion: PropTypes.string,
     telefono: PropTypes.string
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  onSave: PropTypes.func
+  onSave: PropTypes.func // onSave es una prop opcional, pero en este caso, se espera que sea una función.
 };
 
 export default ContactosEmergenciaModal;

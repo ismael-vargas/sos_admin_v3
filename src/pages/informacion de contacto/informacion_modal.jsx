@@ -12,11 +12,19 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
   const [seleccionada, setSeleccionada] = useState(false); // Estado para marcar la tarjeta seleccionada
 
   const guardarCambios = async () => {
-    const csrfToken = localStorage.getItem("csrfToken");
+    let csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
 
     try {
       const response = await axios.put(
-        `http://localhost:9000/usuarios_numeros/${informacion.id}`, // Ruta corregida
+        `http://localhost:1000/usuarios_numeros/actualizar/${informacion.id}`, // Ruta PUT para actualizar un número de usuario
         { nombre, numero },
         {
           headers: {
@@ -27,6 +35,7 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
       );
 
       if (response.status === 200) {
+        // Actualiza el estado en el componente padre
         setInformaciones((prevInformaciones) =>
           prevInformaciones.map((info) =>
             info.id === informacion.id ? { ...info, nombre, numero } : info
@@ -45,11 +54,11 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
         });
       }
     } catch (error) {
-      console.error("Error al guardar los cambios:", error.message);
+      console.error("Error al guardar los cambios:", error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error al editar",
-        text: "Hubo un error al guardar los cambios. Por favor, inténtelo de nuevo.",
+        text: error.response?.data?.message || "Hubo un error al guardar los cambios. Por favor, inténtelo de nuevo.",
       });
     }
   };
@@ -235,12 +244,13 @@ InformacionModal.propTypes = {
   informacion: PropTypes.shape({
     id: PropTypes.number.isRequired,
     nombre: PropTypes.string.isRequired,
-    numero: PropTypes.string.isRequired, // Asegúrate de que "numero" esté en el objeto
-    imagen: PropTypes.string.isRequired,
+    numero: PropTypes.string.isRequired, 
+    // `imagen` ya no es requerido si siempre usas una ruta estática.
+    // Si la imagen fuera dinámica, debería ser PropTypes.string.isRequired
     eliminado: PropTypes.bool.isRequired,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  setInformaciones: PropTypes.func.isRequired, // Nueva prop para actualizar la lista de informaciones
+  setInformaciones: PropTypes.func.isRequired, 
 };
 
 export default InformacionModal;

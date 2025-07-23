@@ -27,9 +27,19 @@ const Perfil = () => {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
-        setProfile(response.data);
-        setTempProfile(response.data);
+        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
+
+        // --- Normaliza la fecha de nacimiento ---
+        let data = response.data;
+        if (data.fecha_nacimiento && !isNaN(new Date(data.fecha_nacimiento).getTime())) {
+          const d = new Date(data.fecha_nacimiento);
+          data.fecha_nacimiento = d.toISOString().substring(0, 10);
+        } else {
+          data.fecha_nacimiento = "";
+        }
+
+        setProfile(data);
+        setTempProfile(data);
       } catch (error) {
         console.error("Error al obtener el perfil:", error.message);
       }
@@ -37,6 +47,20 @@ const Perfil = () => {
 
     fetchProfile();
   }, []);
+
+  // Función para obtener el token CSRF
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await axios.get('http://localhost:1000/csrf-token', { withCredentials: true });
+      // Corrige aquí:
+      const csrfToken = response.data.data?.csrfToken || response.data.csrfToken;
+      localStorage.setItem("csrfToken", csrfToken);
+      return csrfToken;
+    } catch (error) {
+      console.error("Error al obtener CSRF token:", error.message);
+      return null;
+    }
+  };
 
   // Maneja los cambios en los campos del formulario
   const handleInputChange = (e) => {
@@ -50,24 +74,26 @@ const Perfil = () => {
   // Guarda los cambios al enviar el formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const csrfToken = localStorage.getItem("csrfToken"); // Asegúrate de que el token esté almacenado
+    const csrfToken = await fetchCsrfToken();
+
+    const dataToSend = { ...tempProfile };
+
+    // Solo elimina la fecha si está realmente vacía
+    if (!dataToSend.fecha_nacimiento || dataToSend.fecha_nacimiento === '') {
+      delete dataToSend.fecha_nacimiento;
+    }
 
     try {
       const response = await axios.put(
-        `http://localhost:9000/usuarios/${profile.id}`,
-        tempProfile,
+        `http://localhost:1000/usuarios/actualizar/${profile.id}`,
+        dataToSend,
         {
-          headers: {
-            "CSRF-Token": csrfToken, // Enviar el token CSRF en el encabezado
-          },
-          withCredentials: true, // Asegúrate de enviar las cookies
+          headers: { "X-CSRF-Token": csrfToken },
+          withCredentials: true,
         }
       );
-
-      setProfile(response.data); // Actualizar el estado con los datos actualizados
+      setProfile(response.data);
       setIsEditing(false);
-
-      // Mostrar alerta de éxito
       Swal.fire({
         icon: "success",
         title: "¡Cambios actualizados!",
@@ -77,8 +103,6 @@ const Perfil = () => {
       });
     } catch (error) {
       console.error("Error al actualizar el perfil:", error.message);
-
-      // Mostrar alerta de error
       Swal.fire({
         icon: "error",
         title: "Error al actualizar",
@@ -130,7 +154,7 @@ const Perfil = () => {
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    const csrfToken = localStorage.getItem("csrfToken");
+    const csrfToken = await fetchCsrfToken(); // <-- AQUÍ PIDES EL TOKEN ACTUALIZADO
     if (!passwordData.nuevaContrasena || passwordData.nuevaContrasena.length < 6) {
       Swal.fire({
         icon: 'warning',
@@ -142,10 +166,10 @@ const Perfil = () => {
     try {
       const usuarioId = profile?.id || localStorage.getItem("usuario_id");
       const response = await axios.put(
-        `http://localhost:9000/usuarios/${usuarioId}`,
+        `http://localhost:1000/usuarios/actualizar/${usuarioId}`,
         { contrasena: passwordData.nuevaContrasena },
         {
-          headers: { "CSRF-Token": csrfToken },
+          headers: { "X-CSRF-Token": csrfToken }, // <--- CORREGIDO
           withCredentials: true
         }
       );
@@ -264,6 +288,18 @@ const Perfil = () => {
                               />
                             </div>
                           </div>
+                          <div className="col-md-6">
+                            <div className="form-group">
+                              <label>Fecha de Nacimiento *</label>
+                              <input
+                                type="date"
+                                name="fecha_nacimiento"
+                                value={tempProfile?.fecha_nacimiento ? tempProfile.fecha_nacimiento.substring(0, 10) : ''}
+                                onChange={handleInputChange}
+                                className="form-control"
+                              />
+                            </div>
+                          </div>
                           <div className="col-12">
                             <div className="form-group">
                               <label>Dirección *</label>
@@ -349,7 +385,7 @@ const Perfil = () => {
                             </div>
                           </div>
                           {/* Tarjeta de configuración de contraseña DEBAJO DE LAS DOS COLUMNAS */}
-                        <div className="col-12 col-md-6 mt-4 password-card-col">
+                          <div className="col-12 col-md-6 mt-4 password-card-col">
                             <div className="info-card password-card mb-0 d-flex flex-column align-items-center text-center p-4">
                               <span className="info-card-icon mb-2"><i className="bi bi-lock-fill text-primary" style={{fontSize: '1.7rem'}}></i></span>
                               <span className="fw-semibold mb-1" style={{fontSize: '1.15rem'}}>Contraseña</span>

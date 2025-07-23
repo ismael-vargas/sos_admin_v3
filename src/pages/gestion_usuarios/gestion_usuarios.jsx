@@ -66,7 +66,7 @@ function GestionUsuarios() {
         const fetchUsuarios = async () => {
             try {
                 const csrfToken = localStorage.getItem("csrfToken");
-                const response = await fetch("http://localhost:9000/usuarios", {
+                const response = await fetch("http://localhost:1000/usuarios/listar", {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -90,9 +90,13 @@ function GestionUsuarios() {
     }, []);
 
     useEffect(() => {
-        fetch("http://localhost:9000/csrf-token", { credentials: "include" })
+        fetch("http://localhost:1000/csrf-token", { credentials: "include" })
             .then((res) => res.json())
-            .then((data) => localStorage.setItem("csrfToken", data.csrfToken))
+            .then((data) => {
+                // Corrige aquí:
+                const csrfToken = data.data?.csrfToken || data.csrfToken;
+                localStorage.setItem("csrfToken", csrfToken);
+            })
             .catch((err) => console.error("Error al obtener CSRF token:", err));
     }, []);
 
@@ -100,7 +104,7 @@ function GestionUsuarios() {
         try {
             const csrfToken = localStorage.getItem("csrfToken");
 
-            const response = await fetch(`http://localhost:9000/usuarios/${id}`, {
+            const response = await fetch(`http://localhost:1000/usuarios/actualizar/${id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -121,7 +125,7 @@ function GestionUsuarios() {
                 confirmButtonText: "OK",
             });
 
-            actualizarEstadoUsuario(id, "eliminado"); // Actualizamos el estado en tiempo real
+            actualizarEstadoUsuario(id, "eliminado");
         } catch (error) {
             console.error(error);
             Swal.fire({

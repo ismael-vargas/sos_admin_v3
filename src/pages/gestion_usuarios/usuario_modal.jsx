@@ -5,6 +5,7 @@ import Swal from "sweetalert2"; // Importamos SweetAlert2
 import { FaEnvelope, FaIdCard, FaMapMarkerAlt } from 'react-icons/fa';
 import { FiUser, FiMail, FiCreditCard, FiMapPin } from "react-icons/fi";
 import "../../assets/scss/usuario_modal.scss";
+import CryptoJS from "crypto-js";
 
 const DEFAULT_IMG = "/assets/img/foto3.jpg"; // Imagen por defecto si no hay imagen definida
 
@@ -16,6 +17,17 @@ const mapEstadoBackToFront = (estadoBack) =>
 const mapEstadoFrontToBack = (estadoFront) =>
   estadoFront === "Inactivo" ? "eliminado" : "activo";
 
+const CLAVE_SECRETA = "cifrarqR7#"; // Debe ser igual a la del backend
+
+function descifrarDato(cifrado) {
+  try {
+    const bytes = CryptoJS.AES.decrypt(cifrado, CLAVE_SECRETA);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  } catch {
+    return cifrado;
+  }
+}
+
 // Componente del modal
 function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
   const [estado, setEstado] = useState(mapEstadoBackToFront(usuario.estado || "activo"));
@@ -25,8 +37,12 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
   // Obtener token CSRF al cargar el componente
   useEffect(() => {
     axios
-      .get("http://localhost:9000/csrf-token", { withCredentials: true })
-      .then((res) => setCsrfToken(res.data.csrfToken))
+      .get("http://localhost:1000/csrf-token", { withCredentials: true })
+      .then((res) => {
+        // Corrige aquí:
+        const csrfToken = res.data.data?.csrfToken || res.data.csrfToken;
+        setCsrfToken(csrfToken);
+      })
       .catch((err) => console.error("Error al obtener CSRF token:", err));
   }, []);
 
@@ -39,11 +55,11 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
 
     try {
       await axios.put(
-        `http://localhost:9000/usuarios/${usuario.id}`,
+        `http://localhost:1000/usuarios/actualizar/${usuario.id}`,
         { estado: estadoParaBackend },
         {
           headers: {
-            "csrf-token": csrfToken,
+            "CSRF-Token": csrfToken,
           },
           withCredentials: true,
         }
@@ -82,6 +98,24 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
     }
   };
 
+  function parseFecha(fecha) {
+    if (!fecha) return null;
+    // Si es formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      return new Date(fecha + "T00:00:00");
+    }
+    // Si es formato DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
+      const [dia, mes, anio] = fecha.split("/");
+      return new Date(`${anio}-${mes}-${dia}T00:00:00`);
+    }
+    // Si es formato timestamp o Date válido
+    const d = new Date(fecha);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  console.log("Usuario en modal:", usuario);
+
   return (
     <div
       className="modal fade show d-flex justify-content-center align-items-center"
@@ -89,30 +123,30 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
       role="dialog"
       style={{ backgroundColor: "rgba(0, 0, 0, 0.8)" }}
     >
-      <div className="modal-dialog modal-xl" role="document">
-        <div 
+      <div className="modal-dialog modal-lg" role="document" style={{ maxWidth: 650 }}>
+        <div
           className="modal-content"
           style={{
-            borderRadius: "20px",
+            borderRadius: "18px",
             border: "none",
-            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.2)",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.10)",
             overflow: 'hidden',
           }}
         >
           {/* Header del modal */}
-          <div 
-            className="modal-header border-0" 
-            style={{ 
+          <div
+            className="modal-header border-0"
+            style={{
               background: "#0891b2",
               color: "white",
               padding: "20px 30px",
               borderRadius: "20px 20px 0 0"
             }}
           >
-            <h5 
-              className="modal-title" 
-              style={{ 
-                fontSize: "18px", 
+            <h5
+              className="modal-title"
+              style={{
+                fontSize: "18px",
                 fontWeight: "600",
                 margin: 0
               }}
@@ -138,18 +172,19 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
                 src={usuario.imagen ? `/assets/img/${usuario.imagen}` : DEFAULT_IMG}
                 alt={`Imagen de ${usuario.nombre}`}
                 className="rounded-circle shadow"
-                style={{ 
-                  width: "120px", 
-                  height: "120px", 
-                  objectFit: "cover", 
+                style={{
+                  width: "120px",
+                  height: "120px",
+                  objectFit: "cover",
                   border: "3px solid #ddd",
                   boxShadow: "0 4px 15px rgba(0, 0, 0, 0.15)"
                 }}
                 loading="lazy"
               />
             </div>
-            <h3 className="text-center fw-bold mb-4" style={{ fontSize: "1.18rem" }}>{usuario.nombre}</h3>
-            <div className="row g-3 mb-2">
+            <h3 className="text-center fw-bold mb-2" style={{ fontSize: "1.18rem" }}>{usuario.nombre}</h3>
+           
+            <div className="row g-3 mb-2 justify-content-center">
               <div className="col-12 col-md-6">
                 <div className="bg-light rounded-3 p-3 h-100 shadow-sm" style={{ borderRadius: "10px", border: "1px solid #e9ecef" }}>
                   <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
@@ -167,7 +202,7 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
                 </div>
               </div>
               <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm" style={{ borderRadius: "10px", border: "1px solid #e9ecef" }}>
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm mb-3" style={{ borderRadius: "10px", border: "1px solid #e9ecef" }}>
                   <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
                     <FiCreditCard className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> Cédula:
                   </div>
@@ -175,11 +210,27 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
                 </div>
               </div>
               <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm" style={{ borderRadius: "10px", border: "1px solid #e9ecef" }}>
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm mb-3" style={{ borderRadius: "10px", border: "1px solid #e9ecef" }}>
                   <div className="text-muted mb-1 d-flex align-items-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
                     <FiMapPin className="me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} /> Dirección:
                   </div>
-                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{usuario.direccion || "N/A"}</div>
+                  <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>
+                    {usuario.direccion ? usuario.direccion : "N/A"}
+                  </div>
+                </div>
+              </div>
+              {/* Fecha de nacimiento centrada y profesional */}
+              <div className="col-12 d-flex justify-content-center">
+                <div className="bg-light rounded-3 p-3 shadow-sm" style={{ borderRadius: "10px", border: "1px solid #e9ecef", minWidth: 280, maxWidth: 350 }}>
+                  <div className="text-muted mb-1 d-flex align-items-center justify-content-center" style={{ fontSize: "1rem", fontWeight: 600 }}>
+                    <i className="fas fa-calendar-alt me-2" style={{ color: '#0891b2', fontSize: '1.2em' }} />
+                    Fecha de nacimiento:
+                  </div>
+                  <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>
+                    {parseFecha(usuario.fecha_nacimiento)
+    ? parseFecha(usuario.fecha_nacimiento).toLocaleDateString()
+    : "N/A"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -191,15 +242,17 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
                     {estado}
                   </span>
                 ) : (
-                  <select 
-                    className="form-select w-auto" 
-                    value={estado} 
+                  <select
+                    className="form-select w-auto"
+                    value={estado}
                     onChange={handleEstadoChange}
-                    style={{ 
-                      borderRadius: "8px", 
+                    style={{
+                      borderRadius: "8px",
                       border: "2px solid #0891b2",
                       fontSize: "1.05rem",
-                      padding: "8px 16px"
+                      padding: "8px 16px",
+                      minWidth: 150, // <-- Aumenta el ancho mínimo aquí (prueba 130 o 140)
+                      textAlign: "center"
                     }}
                   >
                     <option value="Activo">Activo</option>
@@ -211,49 +264,49 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
           </div>
 
           {/* Footer con botones */}
-          <div 
+          <div
             className="modal-footer bg-light justify-content-center"
-            style={{ 
+            style={{
               padding: "20px 30px",
               borderRadius: "0 0 20px 20px",
               borderTop: "1px solid #dee2e6"
             }}
           >
             {!editandoEstado ? (
-              <button 
-                className="btn btn-primary me-2" 
+              <button
+                className="btn btn-primary me-2"
                 onClick={() => setEditandoEstado(true)}
-                style={{ 
-                  fontWeight: 600, 
-                  fontSize: "1.08rem", 
-                  padding: "10px 32px", 
-                  borderRadius: "14px" 
+                style={{
+                  fontWeight: 600,
+                  fontSize: "1.08rem",
+                  padding: "10px 32px",
+                  borderRadius: "14px"
                 }}
               >
                 <i className="fas fa-edit me-1"></i> Editar Estado
               </button>
             ) : (
-              <button 
-                className="btn btn-primary me-2" 
+              <button
+                className="btn btn-primary me-2"
                 onClick={guardarEstado}
-                style={{ 
-                  fontWeight: 600, 
-                  fontSize: "1.08rem", 
-                  padding: "10px 32px", 
-                  borderRadius: "14px" 
+                style={{
+                  fontWeight: 600,
+                  fontSize: "1.08rem",
+                  padding: "10px 32px",
+                  borderRadius: "14px"
                 }}
               >
                 <i className="fas fa-save me-1"></i> Guardar Estado
               </button>
             )}
-            <button 
-              className="btn btn-secondary" 
+            <button
+              className="btn btn-secondary"
               onClick={onClose}
-              style={{ 
-                fontWeight: 600, 
-                fontSize: "1.08rem", 
-                padding: "10px 32px", 
-                borderRadius: "14px" 
+              style={{
+                fontWeight: 600,
+                fontSize: "1.08rem",
+                padding: "10px 32px",
+                borderRadius: "14px"
               }}
             >
               <i className="fas fa-times me-1"></i> Cerrar
@@ -276,9 +329,10 @@ UsuarioModal.propTypes = {
     estado: PropTypes.string,
     rol: PropTypes.string,
     imagen: PropTypes.string,
+    fecha_nacimiento: PropTypes.string,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  onEstadoActualizado: PropTypes.func.isRequired, // Nueva prop
+  onEstadoActualizado: PropTypes.func.isRequired,
 };
 
 export default UsuarioModal;

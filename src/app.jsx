@@ -3,7 +3,7 @@ import { AppSettings } from './config/app-settings.js';
 import { slideToggle } from './composables/slideToggle.js';
 import { isAuthenticated } from './config/auth';
 import { useNavigate } from 'react-router-dom';
-import axios from './api/axios';
+import axios from 'axios'; // Asegúrate de que axios esté correctamente importado
 
 import Header from './components/header/header.jsx';
 import Sidebar from './components/sidebar/sidebar.jsx';
@@ -39,9 +39,49 @@ function App() {
 	const [appSidebarEndToggled, setAppSidebarEndToggled] = useState(false);
 	const [appSidebarEndMobileToggled, setAppSidebarEndMobileToggled] = useState(false);
 	const navigate = useNavigate(); // Inicializa useNavigate
-	const usuarioId = localStorage.getItem('usuario_id');
+	const usuarioId = localStorage.getItem('usuario_id'); // Obtener el usuarioId del localStorage
 
-  const handleSetAppHeaderNone = (value) => {
+    // Función para guardar preferencias en el backend
+    const guardarPreferenciasUsuario = async (usuarioId, tema, sidebarMinimizado) => {
+        const csrfToken = localStorage.getItem("csrfToken");
+        if (!csrfToken) {
+            console.error("CSRF token no disponible.");
+            return;
+        }
+        try {
+            // Intenta actualizar las preferencias (PUT)
+            await axios.put(`http://localhost:1000/usuarios/preferencias/actualizar/${usuarioId}`, { // Ruta PUT corregida
+                tema,
+                sidebarMinimizado,
+            }, {
+                headers: {
+                    "CSRF-Token": csrfToken,
+                },
+                withCredentials: true,
+            });
+        } catch (error) {
+            // Si el error es un "Preferencias no encontradas" (404), intenta crearlas (POST)
+            if (error.response && error.response.status === 404) {
+                try {
+                    await axios.post(`http://localhost:1000/usuarios/preferencias/registrar/${usuarioId}`, { // Ruta POST corregida
+                        tema,
+                        sidebarMinimizado,
+                    }, {
+                        headers: {
+                            "CSRF-Token": csrfToken,
+                        },
+                        withCredentials: true,
+                    });
+                } catch (err) {
+                    console.error('Error al crear preferencias:', err.response?.data?.message || err.message);
+                }
+            } else {
+                console.error('Error al guardar preferencias:', error.response?.data?.message || error.message);
+            }
+        }
+    };
+
+	const handleSetAppHeaderNone = (value) => {
 		setAppHeaderNone(value);
 	};
 
@@ -214,58 +254,33 @@ function App() {
 		setAppSidebarEndMobileToggled(!appSidebarEndMobileToggled);
 	}
 
-	// Función para guardar preferencias en el backend
-	const guardarPreferenciasUsuario = async (usuarioId, tema, sidebarMinimizado) => {
-		const csrfToken = localStorage.getItem("csrfToken");
-		try {
-			await axios.put(`/usuarios/${usuarioId}/preferencias`, {
-				tema,
-				sidebarMinimizado,
-			}, {
-				headers: {
-					"CSRF-Token": csrfToken,
-				},
-				withCredentials: true,
-			});
-		} catch (error) {
-			// Si no existen preferencias, créalas
-			if (error.response && error.response.status === 404) {
-				try {
-					await axios.post(`/usuarios/${usuarioId}/preferencias`, {
-						tema,
-						sidebarMinimizado,
-					}, {
-						headers: {
-							"CSRF-Token": csrfToken,
-						},
-						withCredentials: true,
-					});
-				} catch (err) {
-					console.error('Error al crear preferencias:', err);
-				}
-			} else {
-				console.error('Error al guardar preferencias:', error);
-			}
-		}
-	};
-
 	// Cargar preferencias al iniciar sesión
 	useEffect(() => {
 		const cargarPreferencias = async () => {
 			if (usuarioId) {
 				try {
-					const res = await axios.get(`/usuarios/${usuarioId}/preferencias`);
+                    const csrfToken = localStorage.getItem("csrfToken");
+                    if (!csrfToken) {
+                        console.warn("CSRF token no disponible al cargar preferencias.");
+                        return;
+                    }
+					const res = await axios.get(`http://localhost:1000/usuarios/preferencias/listar/${usuarioId}`, { // Ruta GET corregida
+                        headers: {
+                            "CSRF-Token": csrfToken,
+                        },
+                        withCredentials: true,
+                    });
 					if (res.data && res.data.preferencias) {
 						setAppDarkMode(res.data.preferencias.tema === 'oscuro');
 						setAppSidebarMinify(res.data.preferencias.sidebarMinimizado);
 					}
 				} catch (error) {
-					console.error('Error al cargar preferencias:', error);
+					console.error('Error al cargar preferencias:', error.response?.data?.message || error.message);
 				}
 			}
 		};
 		cargarPreferencias();
-	}, [usuarioId]);
+	}, [usuarioId, setAppDarkMode, setAppSidebarMinify]); // Añadido setAppDarkMode y setAppSidebarMinify a dependencias
 
 	useEffect(() => {
 		handleSetAppTheme(appTheme);
@@ -356,8 +371,8 @@ function App() {
 				handleSetAppDarkMode,
 				handleSetAppGradientEnabled,
 				handleSetAppTheme,
-				usuarioId,
-				guardarPreferenciasUsuario,
+				usuarioId, // Asegúrate de que usuarioId esté disponible en el contexto
+				guardarPreferenciasUsuario, // La función para guardar preferencias
 			}}
 		>
 			<div

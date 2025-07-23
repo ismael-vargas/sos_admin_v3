@@ -49,7 +49,7 @@ function InformacionCard({ informacion, onFlechaClick, seleccionado, onSelect, e
         }}
       >
         <img
-          src="/assets/img/Pinteres.jpeg" // Ruta absoluta
+          src="/assets/img/Pinteres.jpeg" // Ruta absoluta, asumiendo que esta imagen está en tu carpeta public/assets/img
           alt={`Imagen de ${informacion.nombre}`}
           className="card-img-top"
         />
@@ -91,7 +91,7 @@ function InformacionContactosUsuarios() {
   const [informacionSeleccionada, setInformacionSeleccionada] = useState(null);
   const [usuariosSeleccionados, setUsuariosSeleccionados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: "", numero: "", usuario_id: "" });
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: "", numero: "" });
   const [usuarioLogeado, setUsuarioLogeado] = useState(null);
 
   // Obtener usuario logeado (igual que en perfil.jsx)
@@ -102,20 +102,34 @@ function InformacionContactosUsuarios() {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
+        // Asegúrate de que esta ruta sea correcta para obtener los datos del usuario logeado
+        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
         setUsuarioLogeado(response.data);
       } catch (error) {
+        console.error("Error al obtener el usuario logeado:", error.message);
         setUsuarioLogeado(null);
+        Swal.fire({
+          icon: "error",
+          title: "Error de autenticación",
+          text: "No se pudo cargar la información del usuario. Por favor, inicia sesión de nuevo.",
+        });
       }
     };
     fetchUsuario();
   }, []);
 
+  // Obtener token CSRF al cargar el componente
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const response = await axios.get("http://localhost:9000/csrf-token", { withCredentials: true });
-        localStorage.setItem("csrfToken", response.data.csrfToken); // Almacenar el token CSRF
+        const response = await axios.get("http://localhost:1000/csrf-token", { withCredentials: true });
+        // El backend devuelve el token dentro de un objeto 'data'
+        const token = response.data.data?.csrfToken || response.data.csrfToken; 
+        if (token) {
+          localStorage.setItem("csrfToken", token);
+        } else {
+          throw new Error("CSRF token not found in response.");
+        }
       } catch (error) {
         console.error("Error al obtener el token CSRF:", error.message);
         Swal.fire({
@@ -129,35 +143,41 @@ function InformacionContactosUsuarios() {
     fetchCsrfToken();
   }, []);
 
+  // Función para obtener la lista de informaciones (números de usuario)
+  const fetchInformaciones = async () => {
+    try {
+      const response = await axios.get("http://localhost:1000/usuarios_numeros/listar", {
+        withCredentials: true,
+      });
+
+      // Mapear los datos para incluir el campo 'eliminado' basado en el 'estado'
+      const datos = response.data.map((item) => ({
+        id: item.id,
+        nombre: item.nombre,
+        numero: item.numero,
+        eliminado: item.estado === "eliminado", // Asumiendo que el backend envía 'estado'
+      }));
+
+      setInformaciones(datos);
+    } catch (error) {
+      console.error("Error al obtener la información:", error.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error al cargar datos",
+        text: "Hubo un error al obtener la información. Por favor, inténtelo de nuevo.",
+      });
+    }
+  };
+
+  // Cargar informaciones al montar el componente
   useEffect(() => {
-    const fetchInformaciones = async () => {
-      try {
-        const response = await axios.get("http://localhost:9000/usuarios_numeros", {
-          withCredentials: true,
-        });
-
-        const datos = response.data.map((item) => ({
-          id: item.id,
-          nombre: item.nombre,
-          numero: item.numero,
-          eliminado: item.estado === "eliminado",
-        }));
-
-        setInformaciones(datos);
-      } catch (error) {
-        console.error("Error al obtener la información:", error.message);
-        Swal.fire({
-          icon: "error",
-          title: "Error al cargar datos",
-          text: "Hubo un error al obtener la información. Por favor, inténtelo de nuevo.",
-        });
-      }
-    };
-
     fetchInformaciones();
   }, []);
+
+  // Manejar la eliminación de informaciones seleccionadas
   const handleEliminarInformacion = async () => {
     if (usuariosSeleccionados.length === 0) return;
+
     const confirm = await Swal.fire({
       title: '¿Está seguro de eliminar los números seleccionados?',
       text: 'Esta acción no se puede deshacer.',
@@ -169,16 +189,33 @@ function InformacionContactosUsuarios() {
       cancelButtonText: 'Cancelar',
       reverseButtons: true
     });
+
     if (!confirm.isConfirmed) return;
+
     const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     try {
+      // Optimistic UI update
       setInformaciones((prevInformaciones) =>
-        prevInformaciones.filter((info) => !usuariosSeleccionados.includes(info.id))
+        prevInformaciones.map((info) =>
+          usuariosSeleccionados.includes(info.id)
+            ? { ...info, eliminado: true } // Marcar como eliminado visualmente
+            : info
+        )
       );
+
       for (const id of usuariosSeleccionados) {
-        await axios.put(
-          `http://localhost:9000/usuarios_numeros/${id}`,
-          { estado: "eliminado" },
+        // Llama al endpoint de eliminación lógica del backend
+        await axios.delete(
+          `http://localhost:1000/usuarios_numeros/eliminar/${id}`,
           {
             headers: {
               "CSRF-Token": csrfToken,
@@ -195,6 +232,8 @@ function InformacionContactosUsuarios() {
         timer: 1500,
         showConfirmButton: false,
       });
+      // Volver a cargar los datos para asegurar la consistencia si hubo algún error
+      fetchInformaciones(); 
     } catch (error) {
       console.error("Error al eliminar la información:", error.message);
       Swal.fire({
@@ -202,15 +241,23 @@ function InformacionContactosUsuarios() {
         title: "Error al eliminar",
         text: "Hubo un error al eliminar la información. Por favor, inténtelo de nuevo.",
       });
-      const response = await axios.get("http://localhost:9000/usuarios_numeros", {
-        withCredentials: true,
-      });
-      setInformaciones(response.data);
+      // Revertir UI si falla la eliminación
+      fetchInformaciones(); 
     }
   };
 
+  // Manejar el guardado de un nuevo número de usuario
   const handleGuardarNuevoUsuario = async () => {
     const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     if (!nuevoUsuario.nombre || !nuevoUsuario.numero) {
       Swal.fire({
         icon: "warning",
@@ -219,13 +266,21 @@ function InformacionContactosUsuarios() {
       });
       return;
     }
+    if (!usuarioLogeado || !usuarioLogeado.id) {
+      Swal.fire({
+        icon: "error",
+        title: "Usuario no identificado",
+        text: "No se pudo identificar el usuario logeado. Intente recargar la página.",
+      });
+      return;
+    }
     try {
       const response = await axios.post(
-        "http://localhost:9000/usuarios_numeros",
+        "http://localhost:1000/usuarios_numeros/crear", // Endpoint POST para crear un número de usuario
         {
           nombre: nuevoUsuario.nombre,
           numero: nuevoUsuario.numero,
-          usuario_id: usuarioLogeado?.id,
+          usuarioId: usuarioLogeado.id, // Envía el ID del usuario logeado
         },
         {
           headers: {
@@ -234,30 +289,35 @@ function InformacionContactosUsuarios() {
           withCredentials: true,
         }
       );
-      setInformaciones((prevInformaciones) => [
-        {
-          id: response.data.usuarioNumero.id,
-          nombre: nuevoUsuario.nombre,
-          numero: nuevoUsuario.numero,
-          eliminado: false,
-        },
-        ...prevInformaciones,
-      ]);
-      setNuevoUsuario({ nombre: "", numero: "", usuario_id: "" });
-      setMostrarFormulario(false);
-      Swal.fire({
-        icon: "success",
-        title: "¡Número agregado!",
-        text: "El número ha sido agregado correctamente.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      // Si la creación es exitosa, actualiza la lista de informaciones
+      if (response.data && response.data.usuarioNumero) {
+        setInformaciones((prevInformaciones) => [
+          {
+            id: response.data.usuarioNumero.id,
+            nombre: response.data.usuarioNumero.nombre, // Usa el nombre descifrado del backend
+            numero: response.data.usuarioNumero.numero, // Usa el número descifrado del backend
+            eliminado: false, // Nuevo registro no está eliminado
+          },
+          ...prevInformaciones,
+        ]);
+        setNuevoUsuario({ nombre: "", numero: "" }); // Limpia el formulario
+        setMostrarFormulario(false); // Cierra el modal de formulario
+        Swal.fire({
+          icon: "success",
+          title: "¡Número agregado!",
+          text: "El número ha sido agregado correctamente.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        throw new Error("Respuesta inesperada del servidor.");
+      }
     } catch (error) {
-      console.error("Error al guardar el nuevo usuario:", error.message);
+      console.error("Error al guardar el nuevo usuario:", error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error al guardar",
-        text: "Hubo un error al guardar el usuario. Por favor, inténtelo de nuevo.",
+        text: error.response?.data?.message || "Hubo un error al guardar el usuario. Por favor, inténtelo de nuevo.",
       });
     }
   };
@@ -386,7 +446,7 @@ function InformacionContactosUsuarios() {
                     onBlur={(e) => e.target.style.borderColor = "#e0e0e0"}
                   />
                 </div>
-                {/* El campo de Usuario ID ya no se muestra */}
+                {/* El campo de Usuario ID ya no se muestra, se obtiene del estado usuarioLogeado */}
               </div>
               <div className="modal-footer" style={{ padding: "30px", borderTop: "1px solid #e0e0e0", backgroundColor: "#f8f9fa" }}>
                 <button
@@ -407,7 +467,8 @@ function InformacionContactosUsuarios() {
                   type="button"
                   className="btn btn-primary d-flex align-items-center"
                   onClick={handleGuardarNuevoUsuario}
-                  style={{ 
+                  disabled={!usuarioLogeado || !usuarioLogeado.id} 
+                  style={{
                     fontSize: "1.08rem",
                     padding: "10px 32px",
                     borderRadius: "14px",

@@ -2,10 +2,11 @@
 /* -------------------*/
 import React, { useState, useRef, useEffect } from 'react';
 import { Panel, PanelHeader, PanelBody } from './../../components/panel/panel.jsx';
-import { Edit2, Save, Smartphone, Monitor, Upload } from 'lucide-react';
+import { Edit2, Save, Smartphone, Monitor, Upload, ArrowRight, ArrowLeft } from 'lucide-react'; // Importar ArrowRight y ArrowLeft
 import '../../assets/scss/dashboard.scss';
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import axios from 'axios'; // Importar axios
 
 // Componente de texto editable
 const EditableText = ({ text, onSave, editing, style = {}, className = '' }) => {
@@ -119,7 +120,7 @@ const ImageUploader = ({ currentImage, onImageChange, editing }) => {
     );
 };
 // Componente de edición de contenido y diseño
-const AppContentEditor = ({ values, onChange, onSave }) => {
+const AppContentEditor = ({ values, onChange, onSave, onNavigateToPageEditor }) => {
     return (
         <div style={{ minWidth: 0, maxWidth: 400, width: '100%' }}>
             <h4 className="mb-3">Editor de Contenido Móvil</h4>
@@ -168,9 +169,16 @@ const AppContentEditor = ({ values, onChange, onSave }) => {
                 <label className="form-label">Contenido: Nuestra Visión</label>
                 <textarea className="form-control" rows={2} value={values.visionContent} onChange={e => onChange('visionContent', e.target.value)} />
             </div>
-            <div className="d-flex justify-content-end">
+            <div className="d-flex justify-content-between align-items-center">
                 <button className="btn btn-success px-4" type="button" onClick={onSave}>
                     Guardar
+                </button>
+                <button 
+                    className="btn btn-info px-3 d-flex align-items-center gap-2" 
+                    type="button" 
+                    onClick={onNavigateToPageEditor}
+                >
+                    Ir a Editor de Página <ArrowRight size={18} />
                 </button>
             </div>
         </div>
@@ -356,9 +364,264 @@ const AppPreview = ({ values }) => {
     );
 };
 
+// Componente para editar el contenido de la página principal (integrado en Dashboard)
+const PageContentEditor = ({ onBack }) => {
+    const [pageValues, setPageValues] = useState({
+        id: null, // Para almacenar el ID de la página si ya existe
+        nombrePagina: '',
+        descripcionPagina: '',
+        mision: '',
+        vision: '',
+        logoUrl: 'https://placehold.co/150x50/cccccc/ffffff?text=LogoApp' // Valor por defecto
+    });
+    const [loadingPageContent, setLoadingPageContent] = useState(true); // Estado de carga específico para la página
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        const fetchPageContent = async () => {
+            const csrfToken = localStorage.getItem("csrfToken");
+            if (!csrfToken) {
+                Swal.fire({
+                    icon: "error",
+                    title: "Error de seguridad",
+                    text: "Token CSRF no disponible. Recargue la página.",
+                });
+                setLoadingPageContent(false);
+                return;
+            }
+
+            try {
+                // Intentar obtener la configuración de la página (asumiendo una única configuración)
+                const response = await axios.get('http://localhost:1000/pagina/listar', {
+                    headers: {
+                        "CSRF-Token": csrfToken,
+                    },
+                    withCredentials: true,
+                });
+
+                const data = response.data;
+                if (data) {
+                    setPageValues({
+                        id: data.id,
+                        nombrePagina: data.nombrePagina || '',
+                        descripcionPagina: data.descripcionPagina || '',
+                        mision: data.mision || '',
+                        vision: data.vision || '',
+                        logoUrl: data.logoUrl || 'https://placehold.co/150x50/cccccc/ffffff?text=LogoApp'
+                    });
+                }
+                setLoadingPageContent(false);
+            } catch (error) {
+                console.error("Error al obtener el contenido de la página:", error.response?.data?.message || error.message);
+                // Si el contenido no se encuentra (404) o hay un error, inicializar con valores por defecto
+                if (error.response && error.response.status === 404 || (error.response && error.response.status === 500 && error.response.data.error === 'Configuración de página no encontrada.')) {
+                    console.info("No se encontró contenido de página. Se inicializará con valores por defecto.");
+                    setPageValues(prev => ({
+                        ...prev,
+                        id: null, // Asegurarse de que el ID sea nulo para indicar que es una nueva creación
+                        nombrePagina: 'Página Principal',
+                        descripcionPagina: 'Bienvenido a nuestra aplicación.',
+                        mision: 'Nuestra misión es...',
+                        vision: 'Nuestra visión es...',
+                        logoUrl: 'https://placehold.co/150x50/cccccc/ffffff?text=LogoApp'
+                    }));
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "No se pudo cargar el contenido de la página.",
+                    });
+                }
+                setLoadingPageContent(false);
+            }
+        };
+
+        fetchPageContent();
+    }, []);
+
+    const handleChange = (property, value) => {
+        setPageValues(prev => ({
+            ...prev,
+            [property]: value
+        }));
+    };
+
+    const handleImageChange = (base64Image) => {
+        setPageValues(prev => ({
+            ...prev,
+            logoUrl: base64Image
+        }));
+    };
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                handleImageChange(event.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSavePageContent = async () => {
+        const csrfToken = localStorage.getItem("csrfToken");
+        if (!csrfToken) {
+            Swal.fire({
+                icon: "error",
+                title: "Error de seguridad",
+                text: "Token CSRF no disponible. Recargue la página.",
+            });
+            return;
+        }
+
+        const body = {
+            nombrePagina: pageValues.nombrePagina,
+            descripcionPagina: pageValues.descripcionPagina,
+            mision: pageValues.mision,
+            vision: pageValues.vision,
+            logoUrl: pageValues.logoUrl,
+            estado: 'activo' // Asumiendo que siempre se guarda como activo desde aquí
+        };
+
+        try {
+            let res;
+            if (pageValues.id) {
+                // Si la página ya existe, actualizarla
+                res = await axios.put(`http://localhost:1000/pagina/actualizar/${pageValues.id}`, body, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    withCredentials: true,
+                });
+            } else {
+                // Si la página no existe, crearla
+                res = await axios.post('http://localhost:1000/pagina/crear', body, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'CSRF-Token': csrfToken
+                    },
+                    withCredentials: true,
+                });
+                // Si es una creación exitosa, actualiza el ID local
+                if (res.data && res.data.id) {
+                    setPageValues(prev => ({ ...prev, id: res.data.id }));
+                }
+            }
+
+            if (res.status !== 200 && res.status !== 201) throw new Error(res.data.message || 'Error al guardar');
+            Swal.fire({
+                icon: 'success',
+                title: '¡Cambios guardados!',
+                text: 'El contenido de la página ha sido actualizado correctamente.',
+                confirmButtonColor: '#13b0a7',
+                confirmButtonText: 'OK'
+            });
+        } catch (err) {
+            console.error("Error al guardar el contenido de la página:", err.response?.data?.message || err.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: err.response?.data?.message || 'No se pudo guardar el contenido de la página.',
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'OK'
+            });
+        }
+    };
+
+    if (loadingPageContent) return <div className="text-center py-5">Cargando contenido de la página...</div>;
+
+    return (
+        <div style={{ minWidth: 0, maxWidth: 400, width: '100%' }}>
+            <h4 className="mb-3">Editor de Contenido de Página</h4>
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <button 
+                    className="btn btn-info px-3 d-flex align-items-center gap-2" 
+                    type="button" 
+                    onClick={onBack}
+                >
+                    <ArrowLeft size={18} /> Volver a Editor App
+                </button>
+                <button className="btn btn-success px-4" type="button" onClick={handleSavePageContent}>
+                    Guardar
+                </button>
+            </div>
+
+            <div className="mb-3 text-center">
+                <label className="form-label">Logo de la Página</label>
+                <div className="position-relative d-inline-block">
+                    <img
+                        src={pageValues.logoUrl}
+                        alt="Logo de la Página"
+                        className="mb-2 rounded"
+                        style={{
+                            width: '150px',
+                            height: '50px',
+                            objectFit: 'contain',
+                            cursor: 'pointer',
+                            border: '1px solid #ccc'
+                        }}
+                        onClick={() => fileInputRef.current.click()}
+                    />
+                    <div
+                        className="position-absolute top-50 start-50 translate-middle"
+                        style={{ pointerEvents: 'none' }}
+                    >
+                        <Upload size={24} className="text-dark opacity-75" />
+                    </div>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="d-none"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                    />
+                </div>
+            </div>
+
+            <div className="mb-3">
+                <label className="form-label">Nombre de la Página</label>
+                <input 
+                    className="form-control" 
+                    value={pageValues.nombrePagina} 
+                    onChange={e => handleChange('nombrePagina', e.target.value)} 
+                />
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Descripción de la Página</label>
+                <textarea 
+                    className="form-control" 
+                    rows={3} 
+                    value={pageValues.descripcionPagina} 
+                    onChange={e => handleChange('descripcionPagina', e.target.value)} 
+                />
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Misión</label>
+                <textarea 
+                    className="form-control" 
+                    rows={3} 
+                    value={pageValues.mision} 
+                    onChange={e => handleChange('mision', e.target.value)} 
+                />
+            </div>
+            <div className="mb-3">
+                <label className="form-label">Visión</label>
+                <textarea 
+                    className="form-control" 
+                    rows={3} 
+                    value={pageValues.vision} 
+                    onChange={e => handleChange('vision', e.target.value)} 
+                />
+            </div>
+        </div>
+    );
+};
+
+
 // Componente principal del dashboard
 const Dashboard = () => {
-    // Colores iniciales más atractivos (azul verdoso y azul oscuro)
     const [editing, setEditing] = useState(false);
     const [mobileView, setMobileView] = useState(true);
     const [editorValues, setEditorValues] = useState({
@@ -375,30 +638,108 @@ const Dashboard = () => {
     });
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
-    const [csrfToken, setCsrfToken] = useState('');
     const csrfFetched = useRef(false); // Para evitar pedir el token varias veces
+    const [currentEditor, setCurrentEditor] = useState('appContent'); // 'appContent' o 'pageContent'
 
     useEffect(() => {
-        // Solo pedir el token CSRF una vez por sesión
-        if (!csrfFetched.current) {
-            fetch('http://localhost:9000/csrf-token', {
-                credentials: 'include'
-            })
-                .then(res => res.json())
-                .then(data => setCsrfToken(data.csrfToken))
-                .catch(() => setCsrfToken(''));
-            csrfFetched.current = true;
-        }
-        
+        const fetchContent = async () => {
+            if (!csrfFetched.current) {
+                try {
+                    const csrfRes = await axios.get('http://localhost:1000/csrf-token', {
+                        withCredentials: true
+                    });
+                    const token = csrfRes.data.data?.csrfToken || csrfRes.data.csrfToken;
+                    localStorage.setItem("csrfToken", token);
+                    csrfFetched.current = true;
+                } catch (error) {
+                    console.error("Error al obtener el token CSRF:", error.message);
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error al cargar token CSRF",
+                        text: "Hubo un error al obtener el token de seguridad. Por favor, inténtelo de nuevo.",
+                    });
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            try {
+                const response = await axios.get('http://localhost:1000/contenido_app/obtener', {
+                    withCredentials: true
+                });
+                const data = response.data;
+
+                setEditorValues({
+                    gradientStart: data.gradientStart || '#026b6b',
+                    gradientEnd: data.gradientEnd || '#2D353C',
+                    fontFamily: data.fontFamily || 'Open Sans',
+                    mainTitle: data.mainTitle || 'Un toque para tu seguridad',
+                    howTitle: data.howItWorksTitle || 'Cómo Funciona',
+                    howContent: data.howItWorksContent || '',
+                    missionTitle: data.missionTitle || 'Nuestra Misión',
+                    missionContent: data.missionContent || '',
+                    visionTitle: data.visionTitle || 'Nuestra Visión',
+                    visionContent: data.visionContent || ''
+                });
+                setLoading(false);
+            } catch (error) {
+                console.error("Error al obtener el contenido de la app:", error.response?.data?.message || error.message);
+                // Si el contenido no se encuentra, intentar crearlo con valores por defecto
+                if (error.response && error.response.status === 404 || (error.response && error.response.status === 500 && error.response.data.message === 'Contenido no encontrado para actualizar. Considere usar POST /crear primero.')) {
+                    try {
+                        const csrfToken = localStorage.getItem("csrfToken");
+                        await axios.post('http://localhost:1000/contenido_app/crear', {
+                            gradientStart: '#026b6b',
+                            gradientEnd: '#2D353C',
+                            fontFamily: 'Open Sans',
+                            mainTitle: 'Un toque para tu seguridad',
+                            howItWorksKey: 'howItWorks',
+                            howItWorksTitle: 'Cómo Funciona',
+                            howItWorksContent: 'Contenido por defecto de cómo funciona.',
+                            missionKey: 'mission',
+                            missionTitle: 'Misión',
+                            missionContent: 'Contenido por defecto de misión.',
+                            visionKey: 'vision',
+                            visionTitle: 'Visión',
+                            visionContent: 'Contenido por defecto de visión.',
+                            logoApp: 'https://placehold.co/150x50/cccccc/ffffff?text=LogoApp',
+                            estado: 'activo'
+                        }, {
+                            headers: {
+                                "CSRF-Token": csrfToken,
+                            },
+                            withCredentials: true,
+                        });
+                        // Una vez creado, intentar obtenerlo de nuevo
+                        fetchContent(); 
+                    } catch (createError) {
+                        console.error("Error al crear contenido por defecto:", createError.response?.data?.message || createError.message);
+                        Swal.fire({
+                            icon: "error",
+                            title: "Error",
+                            text: "No se pudo inicializar el contenido de la aplicación.",
+                        });
+                        setLoading(false);
+                    }
+                } else {
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "No se pudo cargar el contenido de la aplicación.",
+                    });
+                    setLoading(false);
+                }
+            }
+        };
+
+        fetchContent();
+
         // Mostrar alerta de bienvenida si es un login reciente
         const usuarioNombre = localStorage.getItem("usuario_nombre");
         const showWelcome = localStorage.getItem("show_welcome");
         
         if (showWelcome === "true" && usuarioNombre) {
-            // Limpiar la bandera para no mostrar la alerta nuevamente
             localStorage.removeItem("show_welcome");
-            
-            // Mostrar alerta de bienvenida después de un pequeño delay
             setTimeout(() => {
                 Swal.fire({
                     icon: "success",
@@ -432,28 +773,6 @@ const Dashboard = () => {
                 });
             }, 500);
         }
-        
-        // Obtener datos reales del backend
-        fetch('http://localhost:9000/api/mobile-content', {
-            credentials: 'include'
-        })
-            .then(res => res.json())
-            .then(data => {
-                setEditorValues({
-                    gradientStart: data.gradientStart || '#026b6b',
-                    gradientEnd: data.gradientEnd || '#2D353C',
-                    fontFamily: data.fontFamily || 'Open Sans',
-                    mainTitle: data.mainTitle || '',
-                    howTitle: data.sections?.find(s => s.key === 'howItWorks')?.title || 'Cómo Funciona',
-                    howContent: data.sections?.find(s => s.key === 'howItWorks')?.content || '',
-                    missionTitle: data.sections?.find(s => s.key === 'mission')?.title || 'Nuestra Misión',
-                    missionContent: data.sections?.find(s => s.key === 'mission')?.content || '',
-                    visionTitle: data.sections?.find(s => s.key === 'vision')?.title || 'Nuestra Visión',
-                    visionContent: data.sections?.find(s => s.key === 'vision')?.content || ''
-                });
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
     }, []);
 
     const handleEditorChange = (property, value) => {
@@ -464,35 +783,39 @@ const Dashboard = () => {
     };
 
     const handleSave = async () => {
+        const csrfToken = localStorage.getItem("csrfToken");
+        if (!csrfToken) {
+            Swal.fire({
+                icon: "error",
+                title: "Error de seguridad",
+                text: "Token CSRF no disponible. Recargue la página.",
+            });
+            return;
+        }
+
         const body = {
             gradientStart: editorValues.gradientStart,
             gradientEnd: editorValues.gradientEnd,
             fontFamily: editorValues.fontFamily,
             mainTitle: editorValues.mainTitle,
-            sections: [
-                { key: 'howItWorks', title: editorValues.howTitle, content: editorValues.howContent },
-                { key: 'mission', title: editorValues.missionTitle, content: editorValues.missionContent },
-                { key: 'vision', title: editorValues.visionTitle, content: editorValues.visionContent }
-            ]
+            howItWorksTitle: editorValues.howTitle,
+            howItWorksContent: editorValues.howContent,
+            missionTitle: editorValues.missionTitle,
+            missionContent: editorValues.missionContent,
+            visionTitle: editorValues.visionTitle,
+            visionContent: editorValues.visionContent,
         };
-        try {
-            // Solicita el token CSRF justo antes de guardar
-            const csrfRes = await fetch('http://localhost:9000/csrf-token', {
-                credentials: 'include'
-            });
-            const csrfData = await csrfRes.json();
-            const csrfToken = csrfData.csrfToken;
 
-            const res = await fetch('http://localhost:9000/api/mobile-content', {
-                method: 'PUT',
+        try {
+            const res = await axios.put('http://localhost:1000/contenido_app/actualizar', body, {
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken
+                    'CSRF-Token': csrfToken
                 },
-                credentials: 'include',
-                body: JSON.stringify(body)
+                withCredentials: true,
             });
-            if (!res.ok) throw new Error('Error al guardar');
+
+            if (res.status !== 200) throw new Error(res.data.message || 'Error al guardar');
             Swal.fire({
                 icon: 'success',
                 title: '¡Cambios realizados!',
@@ -501,10 +824,11 @@ const Dashboard = () => {
                 confirmButtonText: 'OK'
             });
         } catch (err) {
+            console.error("Error al guardar el contenido:", err.response?.data?.message || err.message);
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'No se pudo guardar el contenido',
+                text: err.response?.data?.message || 'No se pudo guardar el contenido',
                 confirmButtonColor: '#d33',
                 confirmButtonText: 'OK'
             });
@@ -527,9 +851,21 @@ const Dashboard = () => {
                             </div>
                         </PanelHeader>
                         <PanelBody className="py-4">
-                            <div className="preview-app-container">
-                                <AppPreview values={editorValues} />
-                                <AppContentEditor values={editorValues} onChange={handleEditorChange} onSave={handleSave} />
+                            <div className="preview-app-container d-flex justify-content-center align-items-start gap-4 flex-wrap">
+                                {/* Contenido del editor actual o del nuevo editor de página */}
+                                {currentEditor === 'appContent' ? (
+                                    <>
+                                        <AppPreview values={editorValues} />
+                                        <AppContentEditor 
+                                            values={editorValues} 
+                                            onChange={handleEditorChange} 
+                                            onSave={handleSave} 
+                                            onNavigateToPageEditor={() => setCurrentEditor('pageContent')} 
+                                        />
+                                    </>
+                                ) : (
+                                    <PageContentEditor onBack={() => setCurrentEditor('appContent')} />
+                                )}
                             </div>
                         </PanelBody>
                     </Panel>

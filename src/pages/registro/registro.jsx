@@ -7,7 +7,7 @@ import instance from "../../api/axios";
 
 // Importa los iconos que necesites
 // Asegúrate de importar FaEye y FaEyeSlash para el "ojito"
-import { FaUser, FaIdCard, FaMapMarkerAlt, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaUser, FaIdCard, FaMapMarkerAlt, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaCalendarAlt } from "react-icons/fa";
 
 const Registro = () => {
   const navigate = useNavigate();
@@ -18,6 +18,7 @@ const Registro = () => {
     direccion: "",
     correo_electronico: "",
     contrasena: "",
+    fecha_nacimiento: "", // <-- Añadido aquí
     estado: "activo"
   });
 
@@ -31,74 +32,87 @@ const Registro = () => {
 
 
 
-  useEffect(() => {
+ useEffect(() => {
+  setIsLoaded(true);
 
-     setIsLoaded(true);
-     
-    const fetchCsrfToken = async () => {
-      try {
-        const response = await instance.get("/csrf-token");
-        setCsrfToken(response.data.csrfToken);
-      } catch (error) {
-        console.error("Error al obtener el token CSRF:", error);
-      }
-    };
-
-    fetchCsrfToken();
-  }, []);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  // <--- NUEVA FUNCIÓN: Para alternar la visibilidad de la contraseña
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const fetchCsrfToken = async () => {
     try {
-      const response = await instance.post(
-        "/usuarios/registro",
-        {
-          nombre: formData.nombre,
-          cedula_identidad: formData.cedula_identidad,
-          direccion: formData.direccion,
-          correo_electronico: formData.correo_electronico,
-          contrasena: formData.contrasena,
-          estado: formData.estado
-        },
-        {
-          headers: {
-            "X-CSRF-Token": csrfToken
-          }
-        }
-      );
-
-      if (response.status === 201) {
-        Swal.fire({
-          icon: "success",
-          title: "¡Usuario creado!",
-          text: "Tu cuenta se creó exitosamente.",
-          confirmButtonText: "Ir al login",
-          timer: 3000,
-          timerProgressBar: true
-        }).then(() => {
-           handleNavigateBack(e); // Usamos nuestra función para animar la salida
-        });
-      } else {
-        setErrorMessage(response.data.message || "Error al registrar el usuario.");
-      }
+      const response = await instance.get("/csrf-token", { withCredentials: true }); // <-- ¡Asegúrate de esto!
+      setCsrfToken(response.data.data.csrfToken);
+      console.log('Token obtenido:', response.data.data.csrfToken);
     } catch (error) {
-      console.error("Error:", error);
-      setErrorMessage(error.response?.data?.message || "Error al conectar con el servidor.");
+      console.error("Error al obtener el token CSRF:", error);
     }
   };
+
+  fetchCsrfToken();
+}, []);
+
+const handleChange = (e) => {
+  setFormData({
+    ...formData,
+    [e.target.name]: e.target.value
+  });
+};
+
+// <--- NUEVA FUNCIÓN: Para alternar la visibilidad de la contraseña
+const togglePasswordVisibility = () => {
+  setShowPassword(!showPassword);
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // ✅ Verificar que el token existe antes de enviar
+  console.log('Token a enviar:', csrfToken);
+  
+  if (!csrfToken) {
+    setErrorMessage("Token CSRF no disponible. Recarga la página.");
+    return;
+  }
+
+  try {
+    const response = await instance.post(
+      "/usuarios/registro",
+      {
+        nombre: formData.nombre,
+        cedula_identidad: formData.cedula_identidad,
+        direccion: formData.direccion,
+        correo_electronico: formData.correo_electronico,
+        contrasena: formData.contrasena,
+        fecha_nacimiento: formData.fecha_nacimiento,
+        estado: formData.estado
+      },
+      {
+        headers: {
+          "X-CSRF-Token": csrfToken
+        },
+        withCredentials: true // <-- Puedes dejarlo aquí también
+      }
+    );
+
+    console.log('Respuesta del servidor:', response.data);  // ✅ Debug
+
+    if (response.status === 201) {
+      Swal.fire({
+        icon: "success",
+        title: "¡Usuario creado!",
+        text: "Tu cuenta se creó exitosamente.",
+        confirmButtonText: "Ir al login",
+        timer: 3000,
+        timerProgressBar: true
+      }).then(() => {
+        handleNavigateBack(e); // Usamos nuestra función para animar la salida
+      });
+    } else {
+      setErrorMessage(response.data.message || "Error al registrar el usuario.");
+    }
+  } catch (error) {
+    console.error("Error completo:", error);
+    console.error("Respuesta del error:", error.response?.data);  // ✅ Debug mejorado
+    setErrorMessage(error.response?.data?.message || "Error al conectar con el servidor.");
+  }
+};
 
     // --- FUNCIÓN PARA ANIMAR LA SALIDA Y VOLVER AL LOGIN ---
   const handleNavigateBack = (e) => {
@@ -164,7 +178,7 @@ const Registro = () => {
               <div className="form-group">
                 <label className="etiqueta">Dirección *</label>
                 <div className="input-with-icon">
-                  <FaMapMarkerAlt className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <FaMapMarkerAlt className="input-icon left-icon" />
                   <input
                     type="text"
                     name="direccion"
@@ -193,30 +207,54 @@ const Registro = () => {
                 </div>
               </div>
 
+            {/* CAMPO DE FECHA DE NACIMIENTO FULL WIDTH */}
+              <div className="form-group full-width">
+                <label className="etiqueta">Fecha de Nacimiento *</label>
+                <div className="input-with-icon">
+                  <FaCalendarAlt className="input-icon left-icon" />
+                  <input
+                    type="date"
+                    name="fecha_nacimiento"
+                    value={formData.fecha_nacimiento || ""}
+                    onChange={handleChange}
+                    required
+                    className="entrada"
+                    style={{
+                      width: "100%",
+                      minWidth: "200px",
+                      background: "#232b3b",
+                      color: "#fff",
+                      borderRadius: "8px",
+                      border: "1px solid #ccc",
+                      height: "40px",
+                      paddingLeft: "40px" // 👈 Esto alinea el texto como los otros campos
+                    }}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
                 <label className="etiqueta">Contraseña *</label>
                 <div className="input-with-icon">
-                  <FaLock className="input-icon left-icon" /> {/* Icono de candado izquierdo */}
+                  <FaLock className="input-icon left-icon" />
                   <input
-                    // Cambia el tipo según el estado showPassword
                     type={showPassword ? "text" : "password"}
                     name="contrasena"
                     value={formData.contrasena}
                     onChange={handleChange}
                     placeholder="Crea una contraseña"
                     required
-                    className="entrada password-input" // Añade una clase específica para el input de contraseña
+                    className="entrada password-input"
                   />
-                  {/* Icono del ojo: cambia FaEye por FaEyeSlash según el estado */}
                   {showPassword ? (
                     <FaEyeSlash
-                      className="input-icon password-toggle-icon" // Clase para el icono del ojo
-                      onClick={togglePasswordVisibility} // Manejador de click
+                      className="input-icon password-toggle-icon"
+                      onClick={togglePasswordVisibility}
                     />
                   ) : (
                     <FaEye
-                      className="input-icon password-toggle-icon" // Clase para el icono del ojo
-                      onClick={togglePasswordVisibility} // Manejador de click
+                      className="input-icon password-toggle-icon"
+                      onClick={togglePasswordVisibility}
                     />
                   )}
                 </div>

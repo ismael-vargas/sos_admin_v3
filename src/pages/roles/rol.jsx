@@ -29,13 +29,15 @@ function Buscador({ busqueda, setBusqueda }) {
 
 // Componente para las tarjetas de rol
 function RolCard({ rol, onFlechaClick, onSelectRol, isSelected }) {
+  // Los roles eliminados no deberían llegar aquí si fetchRoles filtra,
+  // pero se mantiene la opacidad si por alguna razón un rol eliminado se renderiza.
   return (
     <div className="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
       <div
         className={`card border-0 shadow-sm rounded-3 overflow-hidden ${rol.estado === "eliminado" ? "bg-light text-danger" : ""}`}
         style={{
           transition: rol.estado === "eliminado" ? "none" : "transform 0.2s ease, box-shadow 0.2s ease",
-          opacity: rol.estado === "eliminado" ? 0.5 : 1,
+          opacity: rol.estado === "eliminado" ? 0.5 : 1, 
         }}
         onMouseEnter={(e) => {
           if (rol.estado !== "eliminado") {
@@ -88,34 +90,61 @@ function Rol() {
   const [rolSeleccionado, setRolSeleccionado] = useState(null);
   const [rolesSeleccionados, setRolesSeleccionados] = useState([]);
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoRol, setNuevoRol] = useState({ nombre: "", usuario_id: "" });
+  const [nuevoRol, setNuevoRol] = useState({ nombre: "" }); 
   const [usuarioLogeado, setUsuarioLogeado] = useState(null);
 
-  // Obtener roles desde el backend
+  // Obtener CSRF token al cargar el componente
   useEffect(() => {
-    const fetchRoles = async () => {
+    const fetchCsrfToken = async () => {
       try {
-        // Obtener todos los roles incluyendo los eliminados para mantenerlos visibles pero transparentes
-        const response = await axios.get("http://localhost:9000/roles?incluirEliminados=true");
-        console.log("Roles obtenidos del backend:", response.data);
-        
-        // Ordenar: roles activos primero, luego eliminados al final
-        const rolesOrdenados = response.data.sort((a, b) => {
-          if (a.estado === 'eliminado' && b.estado !== 'eliminado') return 1;
-          if (a.estado !== 'eliminado' && b.estado === 'eliminado') return -1;
-          return 0;
-        });
-        
-        setRoles(rolesOrdenados);
+        const response = await axios.get("http://localhost:1000/csrf-token", { withCredentials: true });
+        // Ajuste para la estructura de respuesta del backend
+        const token = response.data.data?.csrfToken || response.data.csrfToken; 
+        if (token) {
+          localStorage.setItem("csrfToken", token);
+        } else {
+          throw new Error("CSRF token not found in response.");
+        }
       } catch (error) {
-        console.error("Error al obtener los roles:", error.message);
+        console.error("Error al obtener el token CSRF:", error.message);
+        Swal.fire({
+          icon: "error",
+          title: "Error al cargar token CSRF",
+          text: "Hubo un error al obtener el token de seguridad. Por favor, inténtelo de nuevo.",
+        });
       }
     };
 
+    fetchCsrfToken();
+  }, []);
+
+  // Función para obtener roles desde el backend
+  const fetchRoles = async () => {
+    try {
+      // OBTENER SOLO ROLES ACTIVOS: Se eliminó el parámetro `?incluirEliminados=true`
+      // para que el backend devuelva solo los roles con estado 'activo' por defecto.
+      const response = await axios.get("http://localhost:1000/roles/listar", { withCredentials: true });
+      console.log("Roles obtenidos del backend:", response.data);
+      
+      // No es necesario ordenar por estado si el backend ya filtra los eliminados.
+      // Si el backend aún devuelve eliminados, se podría añadir un .filter(rol => rol.estado !== 'eliminado') aquí.
+      setRoles(response.data); 
+    } catch (error) {
+      console.error("Error al obtener los roles:", error.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error al cargar roles",
+        text: "Hubo un error al obtener los roles. Por favor, inténtelo de nuevo.",
+      });
+    }
+  };
+
+  // Cargar roles al montar el componente
+  useEffect(() => {
     fetchRoles();
   }, []);
 
-  // Obtener usuario logeado (igual que en perfil.jsx)
+  // Obtener usuario logeado 
   useEffect(() => {
     const fetchUsuario = async () => {
       try {
@@ -123,10 +152,17 @@ function Rol() {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        const response = await axios.get(`http://localhost:9000/usuarios/${usuarioId}`, { withCredentials: true });
+        // Ruta corregida para obtener los detalles del usuario
+        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
         setUsuarioLogeado(response.data);
       } catch (error) {
+        console.error("Error al obtener el usuario logeado:", error.message);
         setUsuarioLogeado(null);
+        Swal.fire({
+          icon: "error",
+          title: "Error de autenticación",
+          text: "No se pudo cargar la información del usuario. Por favor, inicia sesión de nuevo.",
+        });
       }
     };
     fetchUsuario();
@@ -150,30 +186,32 @@ function Rol() {
       reverseButtons: true
     });
     if (!confirm.isConfirmed) return;
+
     const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     try {
+      // Optimistic UI update: Eliminar directamente de la lista
+      setRoles((prevRoles) =>
+        prevRoles.filter((rol) => !rolesSeleccionados.includes(rol.id))
+      );
+
       for (const id of rolesSeleccionados) {
-        await axios.delete(`http://localhost:9000/roles/${id}`, {
+        // Ruta DELETE corregida
+        await axios.delete(`http://localhost:1000/roles/eliminar/${id}`, {
           headers: {
             "CSRF-Token": csrfToken,
           },
           withCredentials: true,
         });
       }
-      
-      // Marcar como eliminados y reordenar: activos primero, eliminados al final
-      setRoles((prevRoles) => {
-        const rolesActualizados = prevRoles.map((rol) =>
-          rolesSeleccionados.includes(rol.id) ? { ...rol, estado: 'eliminado' } : rol
-        );
-        
-        // Ordenar: roles activos primero, luego eliminados al final
-        return rolesActualizados.sort((a, b) => {
-          if (a.estado === 'eliminado' && b.estado !== 'eliminado') return 1;
-          if (a.estado !== 'eliminado' && b.estado === 'eliminado') return -1;
-          return 0;
-        });
-      });
       
       setRolesSeleccionados([]);
       Swal.fire({
@@ -183,13 +221,16 @@ function Rol() {
         timer: 1500,
         showConfirmButton: false,
       });
+      // No es necesario llamar a fetchRoles() aquí, ya que la eliminación optimista y el filtro inicial lo manejan.
     } catch (error) {
-      console.error("Error al eliminar roles:", error.message);
+      console.error("Error al eliminar roles:", error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error al eliminar",
-        text: "Hubo un error al eliminar los roles. Por favor, inténtelo de nuevo.",
+        text: error.response?.data?.message || "Hubo un error al eliminar los roles. Por favor, inténtelo de nuevo.",
       });
+      // Revertir la UI si falla la eliminación (recargando para asegurar consistencia)
+      fetchRoles();
     }
   };
 
@@ -207,42 +248,43 @@ function Rol() {
 
   const handleCerrarModal = () => {
     setRolSeleccionado(null);
+    // Ya no es necesario llamar a fetchRoles() aquí si la actualización es optimista
+    // y la eliminación filtra los elementos.
   };
 
-const handleGuardarRol = async (rolEditado) => {
-  // Guardar copia del estado original por si falla
-  const rolOriginal = roles.find(r => r.id === rolEditado.id);
-  
-  // 1. Actualización optimista (UI primero)
-  setRoles(prev => prev.map(r => r.id === rolEditado.id ? rolEditado : r));
-  setRolSeleccionado(null);
-
-  try {
-    // 2. Llamada al backend (en segundo plano)
-    await axios.put(`http://localhost:9000/roles/${rolEditado.id}`, rolEditado, {
-      headers: { "CSRF-Token": localStorage.getItem("csrfToken") },
-      withCredentials: true
-    });
-
-    // 3. (Opcional) Verificación con el backend
-    const { data } = await axios.get(`http://localhost:9000/roles/${rolEditado.id}`);
-    setRoles(prev => prev.map(r => r.id === data.id ? data : r));
-
-  } catch (error) {
-    console.error("Error:", error);
-    // Revertir si hay error
-    setRoles(prev => prev.map(r => r.id === rolOriginal.id ? rolOriginal : r));
-    Swal.fire("Error", "No se pudo guardar", "error");
-  }
-};
+  // Función para guardar los cambios de un rol (desde el modal)
+  const handleGuardarRol = async (rolEditado) => {
+    // Actualiza el estado de la lista de roles en el componente padre de forma optimista
+    setRoles(prev => prev.map(r => r.id === rolEditado.id ? rolEditado : r));
+    setRolSeleccionado(null); // Cierra el modal después de guardar
+    // La lógica de la llamada a la API y el Swal.fire se manejan dentro de RolModal.
+  };
 
   const handleAgregarRol = async () => {
     const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
+    if (!nuevoRol.nombre.trim()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Campo incompleto",
+        text: "Por favor ingrese un nombre para el rol.",
+      });
+      return;
+    }
+
     try {
-      // Asigna el usuario logeado automáticamente
+      // Endpoint POST para crear un nuevo rol
       const response = await axios.post(
-        "http://localhost:9000/roles",
-        { ...nuevoRol, usuario_id: usuarioLogeado?.id },
+        "http://localhost:1000/roles/crear", // Ruta POST corregida
+        { nombre: nuevoRol.nombre }, // Solo se envía el nombre, usuarioId no es parte del modelo de rol
         {
           headers: {
             "CSRF-Token": csrfToken,
@@ -251,23 +293,35 @@ const handleGuardarRol = async (rolEditado) => {
         }
       );
       
-      // Agregar al final de la lista (no al principio) para mantener consistencia con el backend
-      setRoles((prevRoles) => [...prevRoles, response.data]);
-      setNuevoRol({ nombre: "", usuario_id: "" });
-      setMostrarFormulario(false);
-      Swal.fire({
-        icon: "success",
-        title: "¡Rol agregado!",
-        text: "El rol se ha agregado correctamente.",
-        timer: 1500,
-        showConfirmButton: false,
-      });
+      if (response.data && response.data.rol) {
+        // Agregar el nuevo rol a la lista y reordenar
+        setRoles((prevRoles) => {
+          const updatedRoles = [...prevRoles, response.data.rol];
+          // Ordenar para mantener los roles activos primero
+          return updatedRoles.sort((a, b) => {
+            if (a.estado === 'eliminado' && b.estado !== 'eliminado') return 1;
+            if (a.estado !== 'eliminado' && b.estado === 'eliminado') return -1;
+            return 0;
+          });
+        });
+        setNuevoRol({ nombre: "" });
+        setMostrarFormulario(false);
+        Swal.fire({
+          icon: "success",
+          title: "¡Rol agregado!",
+          text: "El rol se ha agregado correctamente.",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        throw new Error("Respuesta inesperada del servidor.");
+      }
     } catch (error) {
-      console.error("Error al agregar el rol:", error.message);
+      console.error("Error al agregar el rol:", error.response?.data?.message || error.message);
       Swal.fire({
         icon: "error",
         title: "Error al agregar",
-        text: "Hubo un error al agregar el rol. Por favor, inténtelo de nuevo.",
+        text: error.response?.data?.message || "Hubo un error al agregar el rol. Por favor, inténtelo de nuevo.",
       });
     }
   };

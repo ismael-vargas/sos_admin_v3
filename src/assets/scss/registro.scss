@@ -104,6 +104,11 @@
       animation: fadeInUp 0.5s 0.9s forwards;
     }
 
+       // AÑADE ESTA LÍNEA para la Fecha de Nacimiento
+    .form-columns .form-group:nth-of-type(6) { /* */
+      animation: fadeInUp 0.5s 1.0s forwards; /* */
+    }
+
     .checkbox-group {
       animation: fadeInUp 0.5s 1.0s forwards;
     }
@@ -543,4 +548,40 @@ $white: #ffffff; // Color blanco
   background: linear-gradient(to top right, #026b6b, #2D353C); // Solo el fondo gradiente
 
   pointer-events: none;
+}
+
+/* Agrega esto a tu registro.scss */
+.form-group.full-width .entrada[type="date"] {
+  width: 100% !important;
+  min-width: 200px;
+  display: block;
+  background: #232b3b;
+  color: #fff;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  height: 40px;
+  // Elimina o comenta la línea de padding-left
+  // padding-left: 15px; 
+  // Y si tienes, asegúrate de que tampoco haya un padding-right problemático para este campo
+  // Considera usar un padding general para el input que no interfiera con el icono nativo
+  padding: 0.6rem 0.9rem; /* Un padding más estándar que permite que se vea el icono nativo */
+}
+
+/* --- NUEVO: REGLAS ESPECÍFICAS PARA INPUTS CON ICONOS --- */
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-icon .input-icon.left-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fff;
+  font-size: 18px;
+  pointer-events: none;
+}
+
+.input-with-icon input[type="date"].entrada {
+  padding-left: 40px !important;
 }

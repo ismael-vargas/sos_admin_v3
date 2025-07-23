@@ -18,12 +18,24 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
   // Función para guardar los cambios
   const handleSave = async () => {
     // Asigna el usuario logeado automáticamente al guardar
-    const rolEditado = { ...rol, nombre: nombreRol, usuarioId: usuarioLogeado?.id };
+    // Nota: El backend de roles no parece usar usuarioId en la actualización del rol directamente.
+    // Si necesitas registrar quién hizo el cambio, esa lógica debería estar en el backend.
+    const rolEditado = { ...rol, nombre: nombreRol }; 
     
     // Cerrar modal inmediatamente
     setEditandoRol(false);
     cerrarModal();
     
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (!csrfToken) {
+        Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "Token CSRF no disponible. Recargue la página.",
+        });
+        return;
+    }
+
     try {
       // Mostrar carga mientras se actualiza
       Swal.fire({
@@ -32,12 +44,13 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
         didOpen: () => Swal.showLoading()
       });
 
-      // Llamar a onSave (que ahora es optimista)
+      // Llamar a onSave (que ahora es optimista en el componente padre)
+      // onSave se encarga de actualizar el estado de la lista de roles en el componente padre.
       onSave(rolEditado);
 
       // Llamada al backend
-      await axios.put(`http://localhost:9000/roles/${rol.id}`, rolEditado, {
-        headers: { "CSRF-Token": localStorage.getItem("csrfToken") },
+      await axios.put(`http://localhost:1000/roles/actualizar/${rol.id}`, rolEditado, { // Ruta PUT corregida
+        headers: { "CSRF-Token": csrfToken },
         withCredentials: true
       });
 
@@ -50,7 +63,15 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
       });
 
     } catch (error) {
-      Swal.fire("Error", "No se pudo guardar", "error");
+      console.error("Error al guardar los cambios del rol:", error.response?.data?.message || error.message);
+      Swal.fire({
+        icon: "error",
+        title: "Error al guardar",
+        text: error.response?.data?.message || "No se pudo guardar el rol. Por favor, inténtelo de nuevo.",
+      });
+      // Opcional: Si la actualización optimista falló, podrías querer revertir el estado en el padre
+      // Esto requeriría que `onSave` devuelva una promesa y que aquí se maneje el rechazo.
+      // Por simplicidad, el `onClose` del modal principal ya recarga los roles.
     }
   };
 
@@ -178,13 +199,13 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
             {!editandoRol ? (
               <button
                 className="btn btn-primary me-2 d-flex align-items-center justify-content-center"
-                onClick={() => setEditandoRol(true)}
                 style={{ 
                   fontWeight: 600, 
                   fontSize: "1.08rem", 
                   padding: "10px 32px", 
                   borderRadius: "14px" 
                 }}
+                onClick={() => setEditandoRol(true)}
               >
                 <i className="fas fa-edit me-1"></i> Editar Rol
               </button>
@@ -214,6 +235,9 @@ RolModal.propTypes = {
   rol: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     nombre: PropTypes.string.isRequired,
+    estado: PropTypes.string, // Añadido para consistencia con el backend
+    fecha_creacion: PropTypes.string, // Añadido para consistencia
+    fecha_modificacion: PropTypes.string, // Añadido para consistencia
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onSave: PropTypes.func.isRequired,
