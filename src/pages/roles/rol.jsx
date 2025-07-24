@@ -1,11 +1,11 @@
 /* rol.jsx */
 /* -------------------*/
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import RolModal from "./rolModal.jsx";
 import Swal from "sweetalert2";
+import { obtenerCsrfToken, listarRoles, crearRol, eliminarRol, obtenerUsuarioLogeado } from "../../services/roles";
 
 const BASE_IMG_URL = "/assets/img/usuario.jpg"; // Ruta de la imagen predeterminada
 
@@ -95,16 +95,9 @@ function Rol() {
 
   // Obtener CSRF token al cargar el componente
   useEffect(() => {
-    const fetchCsrfToken = async () => {
+    const fetchCsrf = async () => {
       try {
-        const response = await axios.get("http://localhost:1000/csrf-token", { withCredentials: true });
-        // Ajuste para la estructura de respuesta del backend
-        const token = response.data.data?.csrfToken || response.data.csrfToken; 
-        if (token) {
-          localStorage.setItem("csrfToken", token);
-        } else {
-          throw new Error("CSRF token not found in response.");
-        }
+        await obtenerCsrfToken();
       } catch (error) {
         console.error("Error al obtener el token CSRF:", error.message);
         Swal.fire({
@@ -114,21 +107,14 @@ function Rol() {
         });
       }
     };
-
-    fetchCsrfToken();
+    fetchCsrf();
   }, []);
 
   // Función para obtener roles desde el backend
   const fetchRoles = async () => {
     try {
-      // OBTENER SOLO ROLES ACTIVOS: Se eliminó el parámetro `?incluirEliminados=true`
-      // para que el backend devuelva solo los roles con estado 'activo' por defecto.
-      const response = await axios.get("http://localhost:1000/roles/listar", { withCredentials: true });
-      console.log("Roles obtenidos del backend:", response.data);
-      
-      // No es necesario ordenar por estado si el backend ya filtra los eliminados.
-      // Si el backend aún devuelve eliminados, se podría añadir un .filter(rol => rol.estado !== 'eliminado') aquí.
-      setRoles(response.data); 
+      const data = await listarRoles();
+      setRoles(data);
     } catch (error) {
       console.error("Error al obtener los roles:", error.message);
       Swal.fire({
@@ -149,14 +135,10 @@ function Rol() {
     const fetchUsuario = async () => {
       try {
         const usuarioId = localStorage.getItem("usuario_id");
-        if (!usuarioId) {
-          throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
-        }
-        // Ruta corregida para obtener los detalles del usuario
-        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
-        setUsuarioLogeado(response.data);
+        if (!usuarioId) throw new Error("No se encontró el ID del usuario.");
+        const data = await obtenerUsuarioLogeado(usuarioId);
+        setUsuarioLogeado(data);
       } catch (error) {
-        console.error("Error al obtener el usuario logeado:", error.message);
         setUsuarioLogeado(null);
         Swal.fire({
           icon: "error",
@@ -187,30 +169,13 @@ function Rol() {
     });
     if (!confirm.isConfirmed) return;
 
-    const csrfToken = localStorage.getItem("csrfToken");
-    if (!csrfToken) {
-        Swal.fire({
-            icon: "error",
-            title: "Error de seguridad",
-            text: "Token CSRF no disponible. Recargue la página.",
-        });
-        return;
-    }
-
     try {
       // Optimistic UI update: Eliminar directamente de la lista
       setRoles((prevRoles) =>
         prevRoles.filter((rol) => !rolesSeleccionados.includes(rol.id))
       );
-
       for (const id of rolesSeleccionados) {
-        // Ruta DELETE corregida
-        await axios.delete(`http://localhost:1000/roles/eliminar/${id}`, {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        });
+        await eliminarRol(id);
       }
       
       setRolesSeleccionados([]);
@@ -221,7 +186,6 @@ function Rol() {
         timer: 1500,
         showConfirmButton: false,
       });
-      // No es necesario llamar a fetchRoles() aquí, ya que la eliminación optimista y el filtro inicial lo manejan.
     } catch (error) {
       console.error("Error al eliminar roles:", error.response?.data?.message || error.message);
       Swal.fire({
@@ -261,16 +225,6 @@ function Rol() {
   };
 
   const handleAgregarRol = async () => {
-    const csrfToken = localStorage.getItem("csrfToken");
-    if (!csrfToken) {
-        Swal.fire({
-            icon: "error",
-            title: "Error de seguridad",
-            text: "Token CSRF no disponible. Recargue la página.",
-        });
-        return;
-    }
-
     if (!nuevoRol.nombre.trim()) {
       Swal.fire({
         icon: "warning",
@@ -281,29 +235,9 @@ function Rol() {
     }
 
     try {
-      // Endpoint POST para crear un nuevo rol
-      const response = await axios.post(
-        "http://localhost:1000/roles/crear", // Ruta POST corregida
-        { nombre: nuevoRol.nombre }, // Solo se envía el nombre, usuarioId no es parte del modelo de rol
-        {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
-      );
-      
-      if (response.data && response.data.rol) {
-        // Agregar el nuevo rol a la lista y reordenar
-        setRoles((prevRoles) => {
-          const updatedRoles = [...prevRoles, response.data.rol];
-          // Ordenar para mantener los roles activos primero
-          return updatedRoles.sort((a, b) => {
-            if (a.estado === 'eliminado' && b.estado !== 'eliminado') return 1;
-            if (a.estado !== 'eliminado' && b.estado === 'eliminado') return -1;
-            return 0;
-          });
-        });
+      const response = await crearRol(nuevoRol.nombre);
+      if (response && response.rol) {
+        setRoles((prevRoles) => [...prevRoles, response.rol]);
         setNuevoRol({ nombre: "" });
         setMostrarFormulario(false);
         Swal.fire({

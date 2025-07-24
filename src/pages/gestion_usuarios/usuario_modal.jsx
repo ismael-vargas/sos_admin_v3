@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import axios from "axios";
 import Swal from "sweetalert2"; // Importamos SweetAlert2
 import { FaEnvelope, FaIdCard, FaMapMarkerAlt } from 'react-icons/fa';
 import { FiUser, FiMail, FiCreditCard, FiMapPin } from "react-icons/fi";
 import "../../assets/scss/usuario_modal.scss";
 import CryptoJS from "crypto-js";
+import { obtenerCsrfToken, actualizarEstadoUsuario } from "../../services/usuarios";
 
 const DEFAULT_IMG = "/assets/img/foto3.jpg"; // Imagen por defecto si no hay imagen definida
 
@@ -36,14 +36,9 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
 
   // Obtener token CSRF al cargar el componente
   useEffect(() => {
-    axios
-      .get("http://localhost:1000/csrf-token", { withCredentials: true })
-      .then((res) => {
-        // Corrige aquí:
-        const csrfToken = res.data.data?.csrfToken || res.data.csrfToken;
-        setCsrfToken(csrfToken);
-      })
-      .catch((err) => console.error("Error al obtener CSRF token:", err));
+    obtenerCsrfToken().then(setCsrfToken).catch((err) =>
+      console.error("Error al obtener CSRF token:", err)
+    );
   }, []);
 
   // Actualizar el estado temporal mientras se edita
@@ -54,16 +49,7 @@ function UsuarioModal({ usuario, onClose, onEstadoActualizado }) {
     const estadoParaBackend = mapEstadoFrontToBack(estado);
 
     try {
-      await axios.put(
-        `http://localhost:1000/usuarios/actualizar/${usuario.id}`,
-        { estado: estadoParaBackend },
-        {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
-      );
+      await actualizarEstadoUsuario(usuario.id, estadoParaBackend);
 
       if (estadoParaBackend === "eliminado") {
         Swal.fire({

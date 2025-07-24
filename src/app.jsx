@@ -11,7 +11,7 @@ import TopMenu from './components/top-menu/top-menu.jsx';
 import Content from './components/content/content.jsx';
 
 function App() {	
-	const [appTheme] = useState('');
+	const [appTheme, setAppTheme] = useState(''); // Mantener appTheme para la clase del body
 	const [appDarkMode, setAppDarkMode] = useState(false);
 	const [appGradientEnabled, setAppGradientEnabled] = useState(false);
 	const [appHeaderNone, setAppHeaderNone] = useState(false);
@@ -23,7 +23,9 @@ function App() {
 	const [appSidebarNone, setAppSidebarNone] = useState(false);
 	const [appSidebarWide, setAppSidebarWide] = useState(false);
 	const [appSidebarLight, setAppSidebarLight] = useState(false);
-	const [appSidebarMinify, setAppSidebarMinify] = useState(false);
+	// appSidebarMinify: true = ABIERTA, false = ENCOGIDA
+	// Se inicializa en true para que siempre esté abierta por defecto.
+	const [appSidebarMinify, setAppSidebarMinify] = useState(true); 
 	const [appSidebarMobileToggled, setAppSidebarMobileToggled] = useState(false);
 	const [appSidebarTransparent, setAppSidebarTransparent] = useState(false);
 	const [appSidebarSearch, setAppSidebarSearch] = useState(false);
@@ -38,40 +40,48 @@ function App() {
 	const [appSidebarEnd, setAppSidebarEnd] = useState(false);
 	const [appSidebarEndToggled, setAppSidebarEndToggled] = useState(false);
 	const [appSidebarEndMobileToggled, setAppSidebarEndMobileToggled] = useState(false);
-	const navigate = useNavigate(); // Inicializa useNavigate
+	const navigate = useNavigate();
 	const usuarioId = localStorage.getItem('usuario_id'); // Obtener el usuarioId del localStorage
 
     // Función para guardar preferencias en el backend
-    const guardarPreferenciasUsuario = async (usuarioId, tema, sidebarMinimizado) => {
+    // sidebarMinimizado en el backend significa: true=minificado (encogido), false=no minificado (abierto)
+    const guardarPreferenciasUsuario = async (idUsuario, tema, sidebarMinimizadoBackendValue) => {
         const csrfToken = localStorage.getItem("csrfToken");
         if (!csrfToken) {
             console.error("CSRF token no disponible.");
             return;
         }
         try {
+            const preferenceData = {
+                tema: tema,
+                sidebarMinimizado: sidebarMinimizadoBackendValue, 
+            };
+
             // Intenta actualizar las preferencias (PUT)
-            await axios.put(`http://localhost:1000/usuarios/preferencias/actualizar/${usuarioId}`, { // Ruta PUT corregida
-                tema,
-                sidebarMinimizado,
-            }, {
-                headers: {
-                    "CSRF-Token": csrfToken,
-                },
-                withCredentials: true,
-            });
+            await axios.put(`http://localhost:1000/usuarios/preferencias/actualizar/${idUsuario}`, 
+                preferenceData,
+                {
+                    headers: {
+                        "CSRF-Token": csrfToken,
+                    },
+                    withCredentials: true,
+                }
+            );
+            console.log("Preferencias actualizadas en el backend.");
         } catch (error) {
             // Si el error es un "Preferencias no encontradas" (404), intenta crearlas (POST)
             if (error.response && error.response.status === 404) {
                 try {
-                    await axios.post(`http://localhost:1000/usuarios/preferencias/registrar/${usuarioId}`, { // Ruta POST corregida
-                        tema,
-                        sidebarMinimizado,
-                    }, {
-                        headers: {
-                            "CSRF-Token": csrfToken,
-                        },
-                        withCredentials: true,
-                    });
+                    await axios.post(`http://localhost:1000/usuarios/preferencias/registrar/${idUsuario}`, 
+                        { tema, sidebarMinimizado: sidebarMinimizadoBackendValue },
+                        {
+                            headers: {
+                                "CSRF-Token": csrfToken,
+                            },
+                            withCredentials: true,
+                        }
+                    );
+                    console.log("Preferencias registradas por primera vez en el backend.");
                 } catch (err) {
                     console.error('Error al crear preferencias:', err.response?.data?.message || err.message);
                 }
@@ -157,10 +167,11 @@ function App() {
 	};
 
 	const toggleAppSidebarMinify = () => {
-		setAppSidebarMinify(!appSidebarMinify);
-		if (localStorage) {
-			localStorage.appSidebarMinify = !appSidebarMinify;
-		}
+		// appSidebarMinify: true = ABIERTA, false = ENCOGIDA
+		// Si está abierta (true), al hacer toggle pasa a false (encogida).
+		// Si está encogida (false), al hacer toggle pasa a true (abierta).
+		setAppSidebarMinify(prev => !prev); 
+		// El guardado en el backend se manejará en el componente del botón
 	};
 
 	const toggleAppSidebarMobile = (e) => {
@@ -264,7 +275,7 @@ function App() {
                         console.warn("CSRF token no disponible al cargar preferencias.");
                         return;
                     }
-					const res = await axios.get(`http://localhost:1000/usuarios/preferencias/listar/${usuarioId}`, { // Ruta GET corregida
+					const res = await axios.get(`http://localhost:1000/usuarios/preferencias/listar/${usuarioId}`, {
                         headers: {
                             "CSRF-Token": csrfToken,
                         },
@@ -272,7 +283,10 @@ function App() {
                     });
 					if (res.data && res.data.preferencias) {
 						setAppDarkMode(res.data.preferencias.tema === 'oscuro');
-						setAppSidebarMinify(res.data.preferencias.sidebarMinimizado);
+						// NO se carga la preferencia de sidebarMinimizado del backend para forzar que siempre esté abierta al inicio.
+						// Si deseas que el usuario pueda minificarla y que se guarde, esa lógica sigue funcionando
+						// a través del botón de minimizar.
+						console.log("Preferencias cargadas. appSidebarMinify (IS_OPEN):", appSidebarMinify);
 					}
 				} catch (error) {
 					console.error('Error al cargar preferencias:', error.response?.data?.message || error.message);
@@ -280,7 +294,7 @@ function App() {
 			}
 		};
 		cargarPreferencias();
-	}, [usuarioId, setAppDarkMode, setAppSidebarMinify]); // Añadido setAppDarkMode y setAppSidebarMinify a dependencias
+	}, [usuarioId]); // Solo depende de usuarioId
 
 	useEffect(() => {
 		handleSetAppTheme(appTheme);
@@ -313,6 +327,9 @@ function App() {
 		}
 	}, [navigate]);
 
+    // Log para verificar el estado de appSidebarMinify justo antes del render
+    console.log("Renderizando App. appSidebarMinify (IS_OPEN):", appSidebarMinify);
+
 	return (
 		<AppSettings.Provider
 			value={{
@@ -333,7 +350,7 @@ function App() {
 				appSidebarNone,
 				appSidebarWide,
 				appSidebarLight,
-				appSidebarMinify,
+				appSidebarMinify, // Pasa el estado IS_OPEN
 				appSidebarMobileToggled,
 				appSidebarTransparent,
 				appSidebarSearch,
@@ -357,7 +374,6 @@ function App() {
 				handleSetAppContentFullHeight,
 				appTopMenu,
 				appTopMenuMobileToggled,
-				toggleAppTopMenuMobile,
 				handleSetAppTopMenu,
 				appSidebarTwo,
 				handleSetAppSidebarTwo,
@@ -385,7 +401,8 @@ function App() {
 					(appSidebarNone ? 'app-without-sidebar ' : '') +
 					(appSidebarEnd ? 'app-with-end-sidebar ' : '') +
 					(appSidebarWide ? 'app-with-wide-sidebar ' : '') +
-					(appSidebarMinify ? 'app-sidebar-minified ' : '') +
+					// Aplicar 'app-sidebar-minified' SOLO si appSidebarMinify (IS_OPEN) es FALSE
+					(!appSidebarMinify ? 'app-sidebar-minified ' : '') + 
 					(appSidebarMobileToggled ? 'app-sidebar-mobile-toggled ' : '') +
 					(appTopMenu ? 'app-with-top-menu ' : '') +
 					(appContentFullHeight ? 'app-content-full-height ' : '') +

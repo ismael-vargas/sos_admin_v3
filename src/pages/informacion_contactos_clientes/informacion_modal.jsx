@@ -3,10 +3,11 @@ import PropTypes from "prop-types";
 import Swal from "sweetalert2";
 import axios from "axios";
 import { FaTrash, FaUserCircle, FaPhone } from "react-icons/fa";
+import { listarContactosEmergenciaPorCliente, eliminarContactoEmergencia, obtenerCsrfToken } from "../../services/clientes";
 
 function InformacionModal({ informacion, onClose }) {
     const [numeros, setNumeros] = useState([]);
-    const [contactos, setContactos] = useState([]);
+    const [contactos, setContactos] = useState([]); // Mantener contactos para la estructura original si es necesario
     const [loading, setLoading] = useState(true);
     const [paginaActual, setPaginaActual] = useState(1);
     const contactosPorPagina = 4;
@@ -16,13 +17,10 @@ function InformacionModal({ informacion, onClose }) {
         const cargarContactos = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`http://localhost:9000/contactos_emergencias/cliente/${informacion.id}`, {
-                    withCredentials: true
-                });
-                setContactos(response.data);
-                
-                // Formatear números para compatibilidad
-                const numerosFormateados = response.data.map(contacto => ({
+                await obtenerCsrfToken();
+                const contactos = await listarContactosEmergenciaPorCliente(informacion.id);
+                setContactos(contactos);
+                const numerosFormateados = contactos.map(contacto => ({
                     id: contacto.id,
                     nombre: contacto.nombre,
                     telefono: contacto.telefono,
@@ -36,7 +34,6 @@ function InformacionModal({ informacion, onClose }) {
                 setLoading(false);
             }
         };
-
         if (informacion.id) {
             cargarContactos();
         }
@@ -78,35 +75,14 @@ function InformacionModal({ informacion, onClose }) {
 
         if (result.isConfirmed) {
             try {
-                // 1. Obtener token CSRF
-                const csrfRes = await axios.get('http://localhost:9000/csrf-token', {
-                    withCredentials: true
-                });
-                const csrfToken = csrfRes.data.csrfToken;
-
-                // 2. Configurar headers
-                const headers = {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': csrfToken,
-                    'csrf-token': csrfToken
-                };
-
-                // 3. Eliminar contacto del backend con headers CSRF
-                await axios.delete(`http://localhost:9000/contactos_emergencias/${contactoId}`, {
-                    headers: headers,
-                    withCredentials: true
-                });
-                
-                // 4. Actualizar estado local
+                await obtenerCsrfToken();
+                await eliminarContactoEmergencia(contactoId);
                 const numerosActualizados = numeros.filter(numero => numero.id !== contactoId);
                 setNumeros(numerosActualizados);
-                
-                // 5. Ajustar página actual si es necesario
                 const nuevasPaginas = Math.ceil(numerosActualizados.length / contactosPorPagina);
                 if (paginaActual > nuevasPaginas && nuevasPaginas > 0) {
                     setPaginaActual(nuevasPaginas);
                 }
-                
                 await Swal.fire({
                     icon: 'success',
                     title: '¡Eliminado!',

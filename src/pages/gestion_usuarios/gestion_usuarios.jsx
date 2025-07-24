@@ -4,6 +4,7 @@ import { Search, Trash } from "lucide-react";
 import UsuarioModal from "./usuario_modal.jsx";
 import "../../assets/scss/gestion_usuarios.scss";
 import Swal from "sweetalert2";
+import { listarUsuarios, eliminarUsuario, obtenerCsrfToken } from "../../services/usuarios";
 
 const BASE_IMG_URL = "/assets/img/";
 const DEFAULT_IMG = "foto3.jpg";
@@ -63,68 +64,27 @@ function GestionUsuarios() {
     const usuariosPorPagina = 8;
 
     useEffect(() => {
-        const fetchUsuarios = async () => {
+        const cargarUsuarios = async () => {
             try {
-                const csrfToken = localStorage.getItem("csrfToken");
-                const response = await fetch("http://localhost:1000/usuarios/listar", {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "CSRF-Token": csrfToken,
-                    },
-                    credentials: "include",
-                });
-
-                if (!response.ok) {
-                    throw new Error("Error al cargar usuarios");
-                }
-
-                const data = await response.json();
-                setUsuarios(data); // Cargar todos los usuarios, incluidos los eliminados
+                await obtenerCsrfToken(); // Asegura el token
+                const data = await listarUsuarios();
+                setUsuarios(data);
             } catch (error) {
                 console.error("Error al cargar usuarios:", error);
             }
         };
-
-        fetchUsuarios();
+        cargarUsuarios();
     }, []);
 
-    useEffect(() => {
-        fetch("http://localhost:1000/csrf-token", { credentials: "include" })
-            .then((res) => res.json())
-            .then((data) => {
-                // Corrige aquí:
-                const csrfToken = data.data?.csrfToken || data.csrfToken;
-                localStorage.setItem("csrfToken", csrfToken);
-            })
-            .catch((err) => console.error("Error al obtener CSRF token:", err));
-    }, []);
-
-    const eliminarUsuario = async (id) => {
+    const eliminarUsuarioHandler = async (id) => {
         try {
-            const csrfToken = localStorage.getItem("csrfToken");
-
-            const response = await fetch(`http://localhost:1000/usuarios/actualizar/${id}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    "CSRF-Token": csrfToken,
-                },
-                credentials: "include",
-                body: JSON.stringify({ estado: "eliminado" }),
-            });
-
-            if (!response.ok) {
-                throw new Error("Error al eliminar usuario");
-            }
-
+            await eliminarUsuario(id);
             Swal.fire({
                 icon: "info",
                 title: "Usuario Eliminado",
                 text: "El usuario ha sido marcado como inactivo.",
                 confirmButtonText: "OK",
             });
-
             actualizarEstadoUsuario(id, "eliminado");
         } catch (error) {
             console.error(error);
@@ -150,7 +110,7 @@ function GestionUsuarios() {
         });
         if (confirm.isConfirmed) {
             for (const id of usuariosSeleccionados) {
-                await eliminarUsuario(id);
+                await eliminarUsuarioHandler(id);
             }
             setUsuariosSeleccionados([]);
         }

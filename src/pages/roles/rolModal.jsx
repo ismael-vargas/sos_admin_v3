@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import PropTypes from "prop-types";
 import Swal from "sweetalert2";
-import axios from "axios";
+import { actualizarRol } from "../../services/roles";
 
 // Componente modal para mostrar información detallada del rol
 function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
@@ -17,15 +17,10 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
 
   // Función para guardar los cambios
   const handleSave = async () => {
-    // Asigna el usuario logeado automáticamente al guardar
-    // Nota: El backend de roles no parece usar usuarioId en la actualización del rol directamente.
-    // Si necesitas registrar quién hizo el cambio, esa lógica debería estar en el backend.
-    const rolEditado = { ...rol, nombre: nombreRol }; 
-    
-    // Cerrar modal inmediatamente
+    const rolEditado = { ...rol, nombre: nombreRol };
     setEditandoRol(false);
     cerrarModal();
-    
+
     const csrfToken = localStorage.getItem("csrfToken");
     if (!csrfToken) {
         Swal.fire({
@@ -49,10 +44,7 @@ function RolModal({ rol, onClose, onSave, usuarioLogeado }) {
       onSave(rolEditado);
 
       // Llamada al backend
-      await axios.put(`http://localhost:1000/roles/actualizar/${rol.id}`, rolEditado, { // Ruta PUT corregida
-        headers: { "CSRF-Token": csrfToken },
-        withCredentials: true
-      });
+      await actualizarRol(rol.id, rolEditado);
 
       Swal.fire({
         icon: "success",

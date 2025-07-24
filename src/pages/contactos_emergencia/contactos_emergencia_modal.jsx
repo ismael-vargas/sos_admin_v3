@@ -2,11 +2,9 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import Swal from "sweetalert2";
 import { FaPhoneAlt, FaAmbulance, FaRegStickyNote } from "react-icons/fa";
-import axios from "axios"; // Importar axios aquí si se usa directamente para CSRF token
+import { actualizarServicioEmergencia } from "../../services/servicios_emergencias";
 
 function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
-  // Inicializamos el estado del formulario con 'nombre' en lugar de 'servicio'
-  // El backend espera 'nombre', no 'servicio'.
   const [form, setForm] = useState({
     nombre: emergencia.nombre || "", 
     descripcion: emergencia.descripcion || "",
@@ -19,7 +17,6 @@ function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
   };
 
   const handleSave = async () => {
-    // La validación ahora comprueba 'nombre' y 'telefono'
     if (!form.nombre.trim() || !form.telefono.trim()) { 
       Swal.fire({
         icon: "warning",
@@ -28,19 +25,11 @@ function ContactosEmergenciaModal({ emergencia, onClose, onSave }) {
       });
       return;
     }
-
-    // Llamamos a la función onSave pasada por el padre.
-    // El padre (ContactosEmergencia.jsx) es quien hace la llamada a la API
-    // y maneja su propio feedback con SweetAlert2 (éxito/error).
-    if (onSave) {
-      // Pasamos el objeto de emergencia original junto con los datos del formulario,
-      // asegurando que 'id' y otras propiedades originales se mantengan.
-      // El padre es responsable de enviar el CSRF token.
-      await onSave({ ...emergencia, ...form }); 
-    }
-
+    // Solo usa la función del servicio, no axios directo
+    await actualizarServicioEmergencia(emergencia.id, { ...emergencia, ...form });
     setEditando(false);
-    onClose(); // Cerramos el modal después de guardar
+    onClose();
+    if (onSave) onSave({ ...emergencia, ...form });
   };
 
   return (
@@ -209,7 +198,7 @@ ContactosEmergenciaModal.propTypes = {
     telefono: PropTypes.string
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  onSave: PropTypes.func // onSave es una prop opcional, pero en este caso, se espera que sea una función.
+  onSave: PropTypes.func
 };
 
 export default ContactosEmergenciaModal;

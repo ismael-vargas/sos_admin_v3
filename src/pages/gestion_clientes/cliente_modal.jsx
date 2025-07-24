@@ -1,43 +1,31 @@
-import React, { useState, useEffect } from "react"; // Import useEffect
+import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import axios from "axios"; // Import axios
 import Swal from "sweetalert2";
-import { FaPhoneAlt, FaEnvelope, FaIdCard, FaMapMarkerAlt, FaHandsHelping } from 'react-icons/fa'; // Iconos
+import { FaPhoneAlt, FaEnvelope, FaIdCard, FaMapMarkerAlt, FaHandsHelping, FaCalendarAlt } from 'react-icons/fa';
+import { obtenerCsrfToken, actualizarEstadoCliente, eliminarCliente, obtenerNumerosCliente } from "../../services/clientes";
 
-const BASE_IMG_URL = "/assets/img/"; // URL base para las imágenes del cliente
+const BASE_IMG_URL = "/assets/img/";
 
 function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
-  // Use the actual client's 'estado' and 'estado_eliminado' from props
-  // Ensure these fields exist on the client object, if not, provide a default
   const [estadoLocal, setEstadoLocal] = useState(cliente.estado || "activo");
   const [editandoEstado, setEditandoEstado] = useState(false);
-  const [isDeletedLocally, setIsDeletedLocally] = useState(cliente.eliminado); // Track deleted state
-  const [csrfToken, setCsrfToken] = useState(''); // State for CSRF token
+  const [isDeletedLocally, setIsDeletedLocally] = useState(cliente.eliminado);
+  const [csrfToken, setCsrfToken] = useState('');
   const [numerosCliente, setNumerosCliente] = useState([]);
   const [loadingNumeros, setLoadingNumeros] = useState(true);
 
-  // Fetch CSRF token y números de cliente al montar
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        axios.defaults.withCredentials = true;
-        const response = await axios.get('http://localhost:9000/csrf-token');
-        setCsrfToken(response.data.csrfToken);
-      } catch (error) {
-        console.error('Error al obtener el token CSRF en ClienteModal:', error.response?.data || error.message);
-        alert('Error de seguridad: No se pudo obtener el token CSRF.');
-      }
-    };
-    fetchCsrfToken();
+    obtenerCsrfToken().then(setCsrfToken).catch(() =>
+      Swal.fire('Error de seguridad', 'No se pudo obtener el token CSRF. Intenta recargar la página.', 'error')
+    );
   }, []);
 
-  // Obtener los números del cliente
   useEffect(() => {
     const fetchNumeros = async () => {
       setLoadingNumeros(true);
       try {
-        const res = await axios.get(`http://localhost:9000/clientes_numeros/cliente/${cliente.id}`);
-        setNumerosCliente(res.data);
+        const data = await obtenerNumerosCliente(cliente.id);
+        setNumerosCliente(data);
       } catch (err) {
         setNumerosCliente([]);
       }
@@ -50,77 +38,43 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
 
   const guardarEstado = async () => {
     try {
-      const response = await axios.put(
-        `http://localhost:9000/clientes/${cliente.id}/estado`, // Assuming this endpoint
-        { estado: estadoLocal },
-        { 
-          headers: { 
-            'X-CSRF-Token': csrfToken,
-            'csrf-token': csrfToken 
-          },
-          withCredentials: true
-        }
-      );
-      if (response.status === 200) {
-        alert(`Estado actualizado a: ${estadoLocal}`);
-        onUpdateCliente({ ...cliente, estado: estadoLocal }); // Update parent state
-        setEditandoEstado(false);
-      } else {
-        alert("Error al actualizar el estado.");
-      }
+      await actualizarEstadoCliente(cliente.id, estadoLocal);
+      Swal.fire('¡Actualizado!', `Estado actualizado a: ${estadoLocal}`, 'success');
+      onUpdateCliente({ ...cliente, estado: estadoLocal });
+      setEditandoEstado(false);
     } catch (error) {
-      console.error("Error al guardar estado:", error.response?.data || error.message);
-      alert("Error al guardar estado.");
+      Swal.fire('Error', 'Error al guardar estado.', 'error');
     }
   };
 
   const handleEliminarCliente = async () => {
     try {
-      // Obtener token CSRF fresco antes de eliminar (como dispositivos)
-      console.log('Obteniendo token CSRF fresco para eliminación de cliente...');
-      const tokenResponse = await axios.get('http://localhost:9000/csrf-token', {
-        withCredentials: true
-      });
-      const tokenFresco = tokenResponse.data.csrfToken;
-      console.log(`Token CSRF fresco obtenido: ${tokenFresco}`);
-
-      console.log(`=== ELIMINANDO CLIENTE ${cliente.id} ===`);
-      console.log(`Token CSRF enviado: ${tokenFresco}`);
-      console.log(`URL: http://localhost:9000/clientes/${cliente.id}`);
-
-      const response = await axios.put(
-        `http://localhost:9000/clientes/${cliente.id}`,
-        { estado_eliminado: 'eliminado' },
-        { 
-          headers: { 
-            'X-CSRF-Token': tokenFresco,
-            'csrf-token': tokenFresco,  // Agregar ambos nombres como dispositivos
-            'Content-Type': 'application/json'
-          },
-          withCredentials: true
-        }
-      );
-      
-      if (response.status === 200) {
-        setIsDeletedLocally(true);
-        // Llamar a onDelete si existe (para actualizar la lista principal)
-        if (onDelete) {
-          onDelete(cliente.id);
-        } else {
-          onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' });
-        }
-        // No cerrar el modal aquí, para que el usuario vea el mensaje de éxito
+      await obtenerCsrfToken();
+      await eliminarCliente(cliente.id);
+      setIsDeletedLocally(true);
+      if (onDelete) {
+        onDelete(cliente.id);
       } else {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Error al eliminar cliente.' });
+        onUpdateCliente({ ...cliente, eliminado: true, estado_eliminado: 'eliminado' });
       }
     } catch (error) {
-      console.error('Error al eliminar cliente:', error);
-      Swal.fire({ 
-        icon: 'error', 
-        title: 'Error', 
-        text: `Error al eliminar cliente: ${error.response?.data?.message || error.message}` 
-      });
+      Swal.fire({ icon: 'error', title: 'Error', text: `Error al eliminar cliente: ${error.message}` });
     }
+  };
+
+  // Función para formatear la fecha de nacimiento
+  const formatFechaNacimiento = (fecha) => {
+    if (!fecha) return "N/A";
+    try {
+      // Intentar analizar la fecha en varios formatos si es necesario
+      const dateObj = new Date(fecha);
+      if (!isNaN(dateObj.getTime())) {
+        return dateObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+      }
+    } catch (e) {
+      console.error("Error al formatear fecha de nacimiento:", e);
+    }
+    return "N/A";
   };
 
   return (
@@ -232,8 +186,17 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
                   </div>
                 </div>
               </div>
+              {/* Nuevo campo: Fecha de Nacimiento */}
+              <div className="col-12 col-md-6">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
+                  <FaCalendarAlt style={{ color: '#28a745', fontSize: '1.25rem' }} />
+                  <div>
+                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Fecha de Nacimiento:</div>
+                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{formatFechaNacimiento(cliente.fecha_nacimiento)}</div>
+                  </div>
+                </div>
+              </div>
             </div>
-            {/* Número de Ayudas y Números de cliente, ambos centrados y en cuadraditos */}
             <div className="row mb-2 justify-content-center">
               <div className="col-12 col-md-6 d-flex flex-column align-items-center mx-auto">
                 <div className="bg-light rounded-3 p-3 mb-2 shadow-sm d-flex align-items-center gap-2 justify-content-center w-100" style={{ minHeight: 60 }}>
@@ -254,7 +217,7 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
                     <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center d-flex flex-wrap justify-content-center align-items-center gap-2" style={{ minHeight: 60 }}>
                       {numerosCliente.map((n, idx) => (
                         <span key={n.id} className="badge mx-1" style={{ background: '#e0f7fa', color: '#0891b2', fontWeight: 700, fontSize: '1.01rem', border: '1px solid #10b981', borderRadius: 16, padding: '7px 16px' }}>
-                          <span style={{ color: '#6366f1', fontWeight: 700 }}>Número principal:</span> <span style={{ color: '#0891b2', fontWeight: 700 }}>{n.numero}</span>
+                          <FaPhoneAlt className="me-1" style={{ color: '#0891b2' }} />{n.numero}
                         </span>
                       ))}
                     </div>
@@ -272,13 +235,13 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
               borderTop: "1px solid #dee2e6"
             }}
           >
-            {/* Eliminar botón Editar Estado, solo dejar Eliminar Cliente centrado */}
+            {/* Botón de Eliminar Cliente */}
             <button
               className="btn btn-danger d-flex align-items-center justify-content-center"
               onClick={async () => {
                 const result = await Swal.fire({
                   title: `¿Eliminar cliente?`,
-                  html: `<b>${cliente.nombre}</b> será eliminado. Esta acción no se puede deshacer.`,
+                  html: `<b>${cliente.nombre}</b> será marcado como "eliminado" (inactivo). Esta acción es reversible por un administrador.`, // Texto modificado
                   icon: "warning",
                   showCancelButton: true,
                   confirmButtonColor: "#d33",
@@ -290,12 +253,12 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
                   await handleEliminarCliente();
                   await Swal.fire({
                     icon: "success",
-                    title: "Cliente Eliminado",
-                    text: `El cliente ha sido eliminado correctamente.`,
+                    title: "Cliente Marcado como Eliminado", // Título modificado
+                    text: `El cliente ha sido marcado como eliminado correctamente.`, // Texto modificado
                     timer: 1500,
                     showConfirmButton: false
                   });
-                  onClose(); // Cerrar el modal después del mensaje de éxito
+                  onClose();
                 }
               }}
               style={{ 
@@ -319,21 +282,22 @@ ClienteModal.propTypes = {
   cliente: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     nombre: PropTypes.string.isRequired,
-    correo: PropTypes.string, // Optional, depending on backend response
-    correo_electronico: PropTypes.string, // For consistency with mobile app
+    correo: PropTypes.string,
+    correo_electronico: PropTypes.string,
     telefono: PropTypes.string,
-    cedula: PropTypes.string, // Optional
-    cedula_identidad: PropTypes.string, // For consistency with mobile app
+    cedula: PropTypes.string,
+    cedula_identidad: PropTypes.string,
     direccion: PropTypes.string,
-    estado: PropTypes.string, // e.g., 'activo', 'inactivo'
+    estado: PropTypes.string,
     numero_ayudas: PropTypes.number,
-    eliminado: PropTypes.bool, // For frontend representation of estado_eliminado
-    estado_eliminado: PropTypes.string, // For backend representation ('activo', 'eliminado')
-    imagen: PropTypes.string, // Made optional for default fallback
+    eliminado: PropTypes.bool,
+    estado_eliminado: PropTypes.string,
+    imagen: PropTypes.string,
+    fecha_nacimiento: PropTypes.string, // Añadido
   }).isRequired,
   onClose: PropTypes.func.isRequired,
-  onUpdateCliente: PropTypes.func.isRequired, // New prop to update client in parent
-  onDelete: PropTypes.func, // Optional prop for deletion callback
+  onUpdateCliente: PropTypes.func.isRequired,
+  onDelete: PropTypes.func,
 };
 
 export default ClienteModal;

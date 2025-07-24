@@ -1,9 +1,11 @@
+//login.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../../assets/scss/login.scss";
 import Swal from "sweetalert2";
 import instance from "../../api/axios";
-import { setAuthenticated } from "../../config/auth"; // Asegúrate de que esta función maneje el 'userId'
+import { setAuthenticated } from "../../config/auth"; 
+import { loginUsuario, obtenerCsrfToken } from "../../services/usuarios";
 
 const BASE_IMG_URL = "./assets/img";
 
@@ -51,10 +53,9 @@ const Login = () => {
 
   // Función para manejar el envío del formulario de login
   const handleSubmit = async (e, reintento = false) => {
-    // Previene el comportamiento por defecto del formulario solo si e y e.preventDefault existen
-    e.preventDefault && e.preventDefault(); 
-    setError(""); // Limpia cualquier mensaje de error previo
-    setIsSubmitting(true); // Activa el estado de envío
+    e.preventDefault && e.preventDefault();
+    setError("");
+    setIsSubmitting(true);
 
     console.log("[LOGIN] Intentando iniciar sesión...", reintento ? "(reintento)" : "");
 
@@ -62,7 +63,7 @@ const Login = () => {
       // Verifica el token CSRF justo antes de enviar la solicitud
       if (!csrfToken) {
         console.warn("[LOGIN] CSRF token no disponible. Reintentando obtenerlo...");
-        const nuevoToken = await fetchCsrfToken();
+        const nuevoToken = await obtenerCsrfToken();
         if (!nuevoToken) {
           setError("No se pudo obtener el token de seguridad. Por favor, recarga la página.");
           setIsSubmitting(false);
@@ -83,43 +84,21 @@ const Login = () => {
       }
 
       const tokenToSend = csrfToken || localStorage.getItem("csrfToken"); // Usa el token del estado o de localStorage
-
-      const response = await instance.post(
-        "/usuarios/login",
-        {
-          correo_electronico: email,
-          contrasena: password,
-        },
-        {
-          headers: {
-            "X-CSRF-Token": tokenToSend, // Envía el token CSRF en el encabezado
-          },
-          withCredentials: true // Asegura que las cookies se envíen
-        }
-      );
-
+      const response = await loginUsuario(email, password, tokenToSend);
       console.log("[LOGIN] Respuesta del backend:", response);
 
-      // === CORRECCIÓN CLAVE AQUÍ ===
-      // El backend envía 'userId', no 'usuario_id'
-      if (response.status === 200 && response.data && response.data.userId) {
-        // Usa la nueva función setAuthenticated con response.data.userId
-        setAuthenticated(response.data.userId); 
-        
-        // Nota: Tu backend no envía 'nombre' ni 'correo_electronico' en la respuesta de login.
-        // Estos localStorage.setItem guardarán valores por defecto si no están en la respuesta.
-        // Si necesitas estos datos, el backend debe incluirlos en la respuesta de login.
-        localStorage.setItem("usuario_nombre", response.data.nombre || "usuario"); 
-        localStorage.setItem("usuario_email", response.data.correo_electronico || "");
-        localStorage.setItem("show_welcome", "true"); // Bandera para la alerta de bienvenida
-        
-        console.log("[LOGIN] Login exitoso, userId guardado:", response.data.userId);
+      if (response.userId) {
+        setAuthenticated(response.userId); 
+        localStorage.setItem("usuario_nombre", response.nombre || "usuario"); 
+        localStorage.setItem("usuario_email", response.correo_electronico || "");
+        localStorage.setItem("show_welcome", "true");
 
-        // Mostrar alerta de bienvenida antes de navegar
+        console.log("[LOGIN] Login exitoso, userId guardado:", response.userId);
+
         Swal.fire({
           icon: "success",
           title: "¡Inicio de sesión exitoso!",
-          html: `<strong class="custom-welcome">Bienvenido, ${response.data?.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
+          html: `<strong class="custom-welcome">Bienvenido, ${response.nombre || "usuario"}.</strong><br>Redirigiendo al panel...`,
           timer: 1500,
           timerProgressBar: true,
           showConfirmButton: false,
@@ -132,10 +111,8 @@ const Login = () => {
             }
           },
         }).then(() => {
-          // Navegación cuando se cierra la alerta
-          console.log("[LOGIN] Alerta cerrada, redirigiendo al dashboard...");
           setIsSubmitting(false);
-          navigate("/dashboard", { replace: true }); // Redirige al dashboard
+          navigate("/dashboard", { replace: true });
         });
       } else {
         // Si la respuesta no cumple con la estructura esperada (ej. no hay userId)

@@ -1,14 +1,20 @@
 /* dispositivos.jsx */
 /* -------------------*/
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import DispositivosModal from "./dispositivos_modal.jsx";
 import Celular from "../../assets/img/celular.jpg";
-import axios from 'axios';
+import Swal from "sweetalert2"; 
 
-// Obtener la URL base desde variables de entorno o usar un valor por defecto
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://192.168.1.31:9000';
+// Importar las funciones de la API
+import {
+  obtenerCsrfToken,
+  obtenerTodosLosDispositivos,
+  eliminarDispositivo
+  // crearDispositivo, // No se necesita si se elimina la funcionalidad de agregar
+  // actualizarDispositivo // No se necesita si se elimina la funcionalidad de editar a través del modal
+} from '../../services/dispositivos'; 
 
 // Componente para la barra de búsqueda
 function Buscador({ busqueda, setBusqueda }) {
@@ -106,73 +112,58 @@ function GestionDispositivos() {
   const [isLoading, setIsLoading] = useState(true);
   const [dispositivoSeleccionado, setDispositivoSeleccionado] = useState(null);
   const [dispositivosSeleccionados, setDispositivosSeleccionados] = useState([]);
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-  const [nuevoDispositivo, setNuevoDispositivo] = useState({ dispositivo: "", tipo: "", clienteId: "" });
-  const [dispositivoEditando, setDispositivoEditando] = useState(null);
-  const [csrfToken, setCsrfToken] = useState('');
+  // const [mostrarFormulario, setMostrarFormulario] = useState(false); // Eliminado
+  // const [nuevoDispositivo, setNuevoDispositivo] = useState({ dispositivo: "", tipo: "", clienteId: "", tokenDispositivo: "" }); // Eliminado
+  // const [dispositivoEditando, setDispositivoEditando] = useState(null); // Eliminado
+  const csrfFetched = useRef(false); // Para asegurar que el token CSRF se obtenga una sola vez
 
-  // Obtener token CSRF al cargar el componente
+  // Función para cargar los dispositivos
+  const cargarDispositivos = async () => {
+    try {
+      setIsLoading(true);
+      const data = await obtenerTodosLosDispositivos();
+      // Reordenar los dispositivos para que los eliminados vayan al final
+      const dispositivosOrdenados = data.sort((a, b) =>
+        a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
+      );
+      setDispositivos(dispositivosOrdenados);
+    } catch (error) {
+      console.error('Error al cargar dispositivos:', error);
+      Swal.fire({
+        icon: "error",
+        title: "Error de carga",
+        text: "No se pudieron cargar los dispositivos. Intente de nuevo más tarde.",
+      });
+      // Mantener datos por defecto en caso de error o si no hay datos
+      setDispositivos([
+        { id: 1, clienteId: "505", clienteNombre: "Cliente Demo", tipoDispositivo: "Android", nombre: "Samsung Galaxy Tab S7", tokenDispositivo: "token_demo", eliminado: false },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Obtener token CSRF y cargar dispositivos al montar el componente
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        console.log('Obteniendo token CSRF...');
-        
-        // Configurar axios para incluir credenciales
-        const response = await axios.get(`${API_BASE_URL}/csrf-token`, {
-          withCredentials: true
-        });
-        
-        const token = response.data.csrfToken;
-        console.log('Token CSRF obtenido:', token);
-        setCsrfToken(token);
-        
-        // Configurar axios globalmente para incluir credenciales
-        axios.defaults.withCredentials = true;
-        
-      } catch (error) {
-        console.error('Error al obtener el token CSRF:', error.response?.data || error.message);
-        // Reintentar obtener el token después de 3 segundos
-        setTimeout(() => {
-          console.log('Reintentando obtener token CSRF...');
-          fetchCsrfToken();
-        }, 3000);
+    const init = async () => {
+      if (!csrfFetched.current) {
+        try {
+          await obtenerCsrfToken();
+          csrfFetched.current = true;
+        } catch (error) {
+          console.error('Error al obtener el token CSRF:', error);
+          Swal.fire({
+            icon: "error",
+            title: "Error de seguridad",
+            text: "No se pudo obtener el token de seguridad. Recargue la página.",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
+      cargarDispositivos();
     };
-    fetchCsrfToken();
-  }, []);
-
-  // Cargar dispositivos desde la API
-  useEffect(() => {
-    const fetchDispositivos = async () => {
-      try {
-        setIsLoading(true);
-        const response = await axios.get(`${API_BASE_URL}/dispositivos`);
-        
-        // Transformar los datos de la API al formato que espera el frontend
-        const dispositivosTransformados = response.data.map(dispositivo => ({
-          id: dispositivo.id,
-          clienteId: dispositivo.cliente_id,
-          tipoDispositivo: dispositivo.tipo_dispositivo,
-          nombre: dispositivo.modelo_dispositivo,
-          tokenDispositivo: dispositivo.token_dispositivo,
-          estado: dispositivo.estado,
-          fechaCreacion: dispositivo.fecha_creacion,
-          eliminado: dispositivo.estado === 'eliminado'
-        }));
-        
-        setDispositivos(dispositivosTransformados);
-      } catch (error) {
-        console.error('Error al cargar dispositivos:', error);
-        // Mantener datos por defecto en caso de error
-        setDispositivos([
-          { id: 1, clienteId: "505", clienteNombre: "Cliente Demo", tipoDispositivo: "Android", nombre: "Samsung Galaxy Tab S7", tokenDispositivo: "token_demo", eliminado: false },
-        ]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchDispositivos();
+    init();
   }, []);
 
   const dispositivosFiltrados = dispositivos.filter((dispositivo) =>
@@ -181,87 +172,48 @@ function GestionDispositivos() {
     dispositivo.tipoDispositivo.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const handleEliminarDispositivo = async (dispositivoIds = null, mostrarConfirmacion = true, actualizarSoloLocal = false) => {
+  const handleEliminarDispositivo = async (dispositivoIds = null, mostrarConfirmacion = true) => {
     const idsAEliminar = dispositivoIds || dispositivosSeleccionados;
     const cantidad = Array.isArray(idsAEliminar) ? idsAEliminar.length : 1;
     const idsArray = Array.isArray(idsAEliminar) ? idsAEliminar : [idsAEliminar];
 
     if (idsArray.length === 0) return;
 
-    // Validar que todos los IDs son números válidos
     const idsValidos = idsArray.filter(id => id && !isNaN(id) && typeof id !== 'object');
     if (idsValidos.length === 0) {
       console.error('No se encontraron IDs válidos para eliminar:', idsArray);
       return;
     }
 
-    console.log('Eliminando dispositivos con IDs:', idsValidos);
-
-    // Mostrar confirmación con SweetAlert2 solo si se solicita
     if (mostrarConfirmacion) {
-      if (window.Swal) {
-        const result = await window.Swal.fire({
-          title: `¿Desea eliminar ${cantidad > 1 ? `estos ${cantidad} dispositivos` : 'este dispositivo'}?`,
-          text: "Esta acción no se puede deshacer",
-          icon: "warning",
-          showCancelButton: true,
-          confirmButtonColor: "#d33",
-          cancelButtonColor: "#6c757d",
-          confirmButtonText: "Sí, eliminar",
-          cancelButtonText: "Cancelar",
-          reverseButtons: true,
-        });
+      const result = await Swal.fire({
+        title: `¿Desea eliminar ${cantidad > 1 ? `estos ${cantidad} dispositivos` : 'este dispositivo'}?`,
+        text: "Esta acción no se puede deshacer",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#d33",
+        cancelButtonColor: "#6c757d",
+        confirmButtonText: "Sí, eliminar",
+        cancelButtonText: "Cancelar",
+        reverseButtons: true,
+      });
 
-        if (!result.isConfirmed) {
-          return;
-        }
-      } else {
-        // Fallback si SweetAlert2 no está disponible
-        if (!window.confirm(`¿Desea eliminar ${cantidad > 1 ? `estos ${cantidad} dispositivos` : 'este dispositivo'}?`)) {
-          return;
-        }
+      if (!result.isConfirmed) {
+        return;
       }
     }
 
     try {
-      // Solo hacer llamadas a la API si no es actualización local
-      if (!actualizarSoloLocal) {
-        // Verificar que tenemos el token CSRF
-        if (!csrfToken) {
-          throw new Error('Token CSRF no disponible');
-        }
-
-        // Eliminar dispositivos seleccionados en la API
-        for (const dispositivoId of idsValidos) {
-          console.log(`Eliminando dispositivo ${dispositivoId} con token ${csrfToken}`);
-          await axios.delete(`${API_BASE_URL}/dispositivos/${dispositivoId}`, {
-            headers: { 
-              'X-CSRF-Token': csrfToken,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
-        }
+      for (const dispositivoId of idsValidos) {
+        await eliminarDispositivo(dispositivoId);
       }
 
-      // Actualizar la lista local
-      const dispositivosActualizados = dispositivos.map((dispositivo) =>
-        idsValidos.includes(dispositivo.id)
-          ? { ...dispositivo, eliminado: true, estado: 'eliminado' }
-          : dispositivo
-      );
+      // Volver a cargar los dispositivos después de la eliminación exitosa
+      await cargarDispositivos();
+      setDispositivosSeleccionados([]); // Limpiar la selección
 
-      // Reordenar los dispositivos para que los eliminados vayan al final
-      const dispositivosOrdenados = dispositivosActualizados.sort((a, b) =>
-        a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
-      );
-
-      setDispositivos(dispositivosOrdenados);
-      setDispositivosSeleccionados([]);
-
-      // Mostrar mensaje de éxito solo si se mostró confirmación (no viene del modal)
-      if (mostrarConfirmacion && window.Swal) {
-        window.Swal.fire({
+      if (mostrarConfirmacion) {
+        Swal.fire({
           icon: "success",
           title: "Eliminados",
           text: `${cantidad} dispositivo(s) eliminado(s) correctamente.`,
@@ -271,15 +223,14 @@ function GestionDispositivos() {
       }
     } catch (error) {
       console.error('Error al eliminar dispositivos:', error);
-      // Solo mostrar error si no viene del modal (para evitar doble mensaje)
-      if (mostrarConfirmacion && window.Swal) {
-        window.Swal.fire({
+      if (mostrarConfirmacion) {
+        Swal.fire({
           icon: "error",
           title: "Error",
-          text: `Hubo un error al eliminar los dispositivos: ${error.message}`,
+          text: `Hubo un error al eliminar los dispositivos: ${error.message || error.response?.data?.error || 'Error desconocido'}`,
         });
       }
-      throw error; // Re-lanzar el error para que el modal lo maneje
+      throw error; // Re-lanzar el error para que el modal lo maneje si es el caso
     }
   };
 
@@ -289,61 +240,6 @@ function GestionDispositivos() {
         ? prevSeleccionados.filter((dispositivoId) => dispositivoId !== id)
         : [...prevSeleccionados, id]
     );
-  };
-
-  const handleAgregarDispositivo = () => {
-    setMostrarFormulario(true);
-    setDispositivoEditando(null);
-  };
-
-  const handleEdit = (dispositivo) => {
-    setDispositivoEditando(dispositivo);
-    setNuevoDispositivo({
-      dispositivo: dispositivo.nombre,
-      tipo: dispositivo.tipoDispositivo,
-      clienteId: dispositivo.clienteId,
-    });
-    setMostrarFormulario(true);
-
-    localStorage.setItem("dispositivoEditando", JSON.stringify(dispositivo));
-  };
-
-  const handleGuardarNuevoDispositivo = () => {
-    if (nuevoDispositivo.dispositivo && nuevoDispositivo.tipo) {
-      if (dispositivoEditando) {
-        // Editar dispositivo existente
-        const dispositivosActualizados = dispositivos.map((dispositivo) =>
-          dispositivo.id === dispositivoEditando.id
-            ? {
-                ...dispositivo,
-                nombre: nuevoDispositivo.dispositivo,
-                tipoDispositivo: nuevoDispositivo.tipo,
-                clienteId: nuevoDispositivo.clienteId,
-              }
-            : dispositivo
-        );
-        setDispositivos(dispositivosActualizados);
-      } else {
-        // Agregar nuevo dispositivo
-        const nuevoId = Math.max(...dispositivos.map((d) => d.id)) + 1;
-        const dispositivoNuevo = {
-          id: nuevoId,
-          clienteId: nuevoDispositivo.clienteId,
-          clienteNombre: `Cliente ${nuevoDispositivo.clienteId}`,
-          tipoDispositivo: nuevoDispositivo.tipo,
-          nombre: nuevoDispositivo.dispositivo,
-          tokenDispositivo: "nuevo_token",
-          eliminado: false,
-        };
-        setDispositivos([...dispositivos, dispositivoNuevo]);
-      }
-
-      setNuevoDispositivo({ dispositivo: "", tipo: "", clienteId: "" });
-      setMostrarFormulario(false);
-      setDispositivoEditando(null);
-    } else {
-      alert("Por favor complete todos los campos.");
-    }
   };
 
   return (
@@ -370,8 +266,9 @@ function GestionDispositivos() {
                   <Buscador busqueda={busqueda} setBusqueda={setBusqueda} />
                 </div>
                 <div className="col-12 col-lg-6 d-flex flex-wrap justify-content-lg-end gap-2">
+                  {/* Botón "Agregar Dispositivo" eliminado */}
                   <button
-                    className="btn btn-danger"
+                    className="btn btn-danger d-flex align-items-center gap-1"
                     onClick={() => handleEliminarDispositivo()}
                     disabled={dispositivosSeleccionados.length === 0}
                   >
@@ -411,102 +308,15 @@ function GestionDispositivos() {
         <DispositivosModal
           dispositivo={dispositivoSeleccionado}
           onClose={() => setDispositivoSeleccionado(null)}
-          onDelete={(id) => {
-            // Solo actualizar localmente, el modal ya hizo la llamada a la API
-            const dispositivosActualizados = dispositivos.map((dispositivo) =>
-              dispositivo.id === id
-                ? { ...dispositivo, eliminado: true, estado: 'eliminado' }
-                : dispositivo
-            );
-            const dispositivosOrdenados = dispositivosActualizados.sort((a, b) =>
-              a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
-            );
-            setDispositivos(dispositivosOrdenados);
+          onDelete={async (id) => {
+            // Cuando se elimina desde el modal, se recargan los datos
+            await cargarDispositivos();
             setDispositivosSeleccionados([]);
           }}
-          csrfToken={csrfToken}
         />
       )}
 
-      {mostrarFormulario && (
-        <div
-          className="modal"
-          style={{
-            display: "block",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-          }}
-        >
-          <div
-            className="modal-dialog modal-dialog-centered"
-            style={{
-              zIndex: 1050,
-              maxWidth: "500px",
-              width: "100%",
-            }}
-          >
-            <div
-              className="modal-content"
-              style={{
-                border: "none",
-                borderRadius: "0",
-              }}
-            >
-              <div className="modal-header">
-                <h5 className="modal-title">{dispositivoEditando ? "Editar Dispositivo" : "Agregar Dispositivo"}</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setMostrarFormulario(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="mb-3">
-                  <label className="form-label d-flex align-items-center gap-2">
-                    <i className="fas fa-mobile-alt text-primary"></i> Dispositivo
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoDispositivo.dispositivo}
-                    onChange={(e) =>
-                      setNuevoDispositivo({ ...nuevoDispositivo, dispositivo: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label d-flex align-items-center gap-2">
-                    <i className="fas fa-microchip text-secondary"></i> Tipo
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={nuevoDispositivo.tipo}
-                    onChange={(e) =>
-                      setNuevoDispositivo({ ...nuevoDispositivo, tipo: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary d-flex align-items-center gap-1"
-                  onClick={() => setMostrarFormulario(false)}
-                >
-                  <i className="fas fa-times"></i> Cancelar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary d-flex align-items-center gap-1"
-                  onClick={handleGuardarNuevoDispositivo}
-                >
-                  <i className="fas fa-save"></i> Guardar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal de agregar/editar dispositivo eliminado */}
     </div>
   );
 }

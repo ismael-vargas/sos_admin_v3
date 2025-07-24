@@ -8,6 +8,7 @@ import InformacionModal from "./informacion_modal.jsx";
 import axios from "axios";
 import Swal from 'sweetalert2';
 import "../../assets/scss/informacion.scss";
+import { listarClientes, obtenerCsrfToken, eliminarTodosContactosEmergenciaCliente } from "../../services/clientes";
 
 const BASE_IMG_URL = "/assets/img/";
 const DEFAULT_IMG = "con_cliente.jpg";
@@ -102,28 +103,23 @@ function InformacionContactosClientes() {
   // Cargar clientes desde la API
   useEffect(() => {
     const cargarClientes = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('http://localhost:9000/clientes', {
-          withCredentials: true
-        });
-        
-        // Mapear los datos al formato requerido por el componente
-        const clientesFormateados = response.data.map(cliente => ({
-          id: cliente.id,
-          nombre: cliente.nombre,
-          eliminado: cliente.estado_eliminado === 'eliminado'
-        }));
-        
-        setInformaciones(clientesFormateados);
-      } catch (error) {
-        console.error('Error al cargar clientes:', error);
-        Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
-      } finally {
-        setLoading(false);
-      }
+        try {
+            setLoading(true);
+            await obtenerCsrfToken();
+            const clientes = await listarClientes();
+            const clientesFormateados = clientes.map(cliente => ({
+                id: cliente.id,
+                nombre: cliente.nombre,
+                eliminado: cliente.estado === 'eliminado'
+            }));
+            setInformaciones(clientesFormateados);
+        } catch (error) {
+            console.error('Error al cargar clientes:', error);
+            Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+        } finally {
+            setLoading(false);
+        }
     };
-
     cargarClientes();
   }, []);
 
@@ -133,72 +129,34 @@ function InformacionContactosClientes() {
 
   const handleEliminarInformacion = async () => {
     try {
-      // Confirmar eliminación
-      const mensaje = clientesSeleccionados.length === 1 
-        ? '¿Desea eliminar todos los números de emergencia de este cliente?'
-        : `¿Desea eliminar todos los números de emergencia de estos ${clientesSeleccionados.length} clientes?`;
-        
-      const result = await Swal.fire({
-        title: '¿Estás seguro?',
-        text: mensaje,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#0891b2',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-      });
-
-      if (result.isConfirmed) {
-        // 1. Obtener token CSRF
-        const csrfRes = await axios.get('http://localhost:9000/csrf-token', {
-          withCredentials: true
+        const mensaje = clientesSeleccionados.length === 1 
+            ? '¿Desea eliminar todos los números de emergencia de este cliente?'
+            : `¿Desea eliminar todos los números de emergencia de estos ${clientesSeleccionados.length} clientes?`;
+        const result = await Swal.fire({
+            title: '¿Estás seguro?',
+            text: mensaje,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#0891b2',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
         });
-        const csrfToken = csrfRes.data.csrfToken;
-
-        // 2. Configurar headers
-        const headers = {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-          'csrf-token': csrfToken
-        };
-
-        // 3. Para cada cliente seleccionado, eliminar sus contactos de emergencia
-        for (const clienteId of clientesSeleccionados) {
-          try {
-            // Obtener contactos de emergencia del cliente
-            const contactosResponse = await axios.get(`http://localhost:9000/contactos_emergencias/cliente/${clienteId}`, {
-              withCredentials: true
-            });
-            
-            // Eliminar cada contacto de emergencia
-            const contactosEliminacion = contactosResponse.data.map(contacto =>
-              axios.delete(`http://localhost:9000/contactos_emergencias/${contacto.id}`, {
-                headers: headers,
-                withCredentials: true
-              })
-            );
-            
-            await Promise.all(contactosEliminacion);
-            console.log(`Contactos de emergencia eliminados para cliente ${clienteId}`);
-          } catch (error) {
-            console.error(`Error al eliminar contactos para cliente ${clienteId}:`, error);
-          }
+        if (result.isConfirmed) {
+            await obtenerCsrfToken();
+            for (const clienteId of clientesSeleccionados) {
+                await eliminarTodosContactosEmergenciaCliente(clienteId);
+            }
+            setClientesSeleccionados([]);
+            Swal.fire('Eliminado', 'Los números de emergencia han sido eliminados', 'success');
         }
-
-        // 4. NO marcar como eliminado - solo limpiar selección
-        // Los clientes siguen existiendo, solo eliminamos sus contactos de emergencia
-        setClientesSeleccionados([]);
-        
-        Swal.fire('Eliminado', 'Los números de emergencia han sido eliminados', 'success');
-      }
     } catch (error) {
-      console.error('Error al eliminar contactos:', error.response?.data || error.message);
-      Swal.fire(
-        'Error', 
-        error.response?.data?.message || error.response?.data?.error || 'No se pudieron eliminar los contactos',
-        'error'
-      );
+        console.error('Error al eliminar contactos:', error.response?.data || error.message);
+        Swal.fire(
+            'Error', 
+            error.response?.data?.message || error.response?.data?.error || 'No se pudieron eliminar los contactos',
+            'error'
+        );
     }
   };
 

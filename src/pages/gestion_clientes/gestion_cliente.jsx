@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search, Trash } from "lucide-react";
 import ClienteModal from "./cliente_modal.jsx";
-import axios from "axios";
 import Swal from 'sweetalert2';
+import { listarClientes, eliminarCliente, obtenerCsrfToken } from "../../services/clientes";
 
 const BASE_IMG_URL = "/assets/img/";
 const DEFAULT_IMG = "usu.jpg";
@@ -78,18 +78,10 @@ function GestionClientes() {
     useEffect(() => {
         const fetchClientes = async () => {
             try {
-                axios.defaults.withCredentials = true;
-                // Intentar primero con parámetro para incluir eliminados
-                let response;
-                try {
-                    response = await axios.get('http://localhost:9000/clientes?incluirEliminados=true');
-                } catch (err) {
-                    // Si falla, intentar sin parámetro (para compatibilidad)
-                    console.log('Reintentando sin parámetro incluirEliminados...');
-                    response = await axios.get('http://localhost:9000/clientes');
-                }
-                
-                const clientesFormateados = response.data.map(c => ({
+                await obtenerCsrfToken();
+                const data = await listarClientes(true);
+                // Formatea los datos como antes
+                const clientesFormateados = data.map(c => ({
                     id: c.id,
                     nombre: c.nombre,
                     correo: c.correo_electronico,
@@ -97,20 +89,14 @@ function GestionClientes() {
                     direccion: c.direccion,
                     estado: c.estado,
                     numero_ayudas: c.numero_ayudas,
-                    eliminado: c.estado_eliminado === 'eliminado',
-                    estado_eliminado: c.estado_eliminado,
-                    imagen: c.imagen || DEFAULT_IMG
+                    eliminado: c.estado === 'eliminado',
+                    estado_eliminado: c.estado,
+                    imagen: c.imagen || DEFAULT_IMG,
+                    fecha_nacimiento: c.fecha_nacimiento
                 }));
-
-                console.log('Clientes cargados:', clientesFormateados.length);
-                console.log('Clientes eliminados:', clientesFormateados.filter(c => c.eliminado).length);
-                console.log('Datos completos:', clientesFormateados);
-
-                // Ordenar para que los eliminados vayan al final (como dispositivos)
                 const clientesOrdenados = clientesFormateados.sort((a, b) =>
                     a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
                 );
-
                 setClientes(clientesOrdenados);
                 setIsLoading(false);
             } catch (error) {
@@ -129,7 +115,8 @@ function GestionClientes() {
                         numero_ayudas: 5,
                         eliminado: false,
                         estado_eliminado: "activo",
-                        imagen: DEFAULT_IMG
+                        imagen: DEFAULT_IMG,
+                        fecha_nacimiento: "1990-05-15"
                     },
                     {
                         id: 2,
@@ -137,11 +124,12 @@ function GestionClientes() {
                         correo: "eliminado@demo.com",
                         cedula: "87654321",
                         direccion: "Dirección Test 2",
-                        estado: "activo",
+                        estado: "eliminado", // Cambiado a 'eliminado' para coincidir
                         numero_ayudas: 2,
                         eliminado: true,
                         estado_eliminado: "eliminado",
-                        imagen: DEFAULT_IMG
+                        imagen: DEFAULT_IMG,
+                        fecha_nacimiento: "1988-11-20"
                     },
                     {
                         id: 3,
@@ -153,11 +141,11 @@ function GestionClientes() {
                         numero_ayudas: 8,
                         eliminado: false,
                         estado_eliminado: "activo",
-                        imagen: DEFAULT_IMG
+                        imagen: DEFAULT_IMG,
+                        fecha_nacimiento: "1995-01-01"
                     }
                 ];
                 
-                // Ordenar para que los eliminados vayan al final
                 const clientesOrdenados = clientesRespaldo.sort((a, b) =>
                     a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
                 );
@@ -170,7 +158,6 @@ function GestionClientes() {
         fetchClientes();
     }, []);
 
-    // Filtering and Sorting Clients
     const clientesFiltrados = clientes.filter((cliente) =>
         cliente.nombre.toLowerCase().includes(busqueda.toLowerCase())
     );
@@ -183,77 +170,50 @@ function GestionClientes() {
     const clientesMostrados = clientesOrdenados.slice(indexOfFirstClient, indexOfLastClient);
     const totalPaginas = Math.ceil(clientesOrdenados.length / clientesPorPagina);
 
-    // Selección múltiple de clientes
     const handleSeleccionarCliente = (id) => {
         setClientesSeleccionados((prev) =>
             prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
         );
     };
 
-    // Eliminar clientes seleccionados
-const handleEliminarClientes = async () => {
-    if (clientesSeleccionados.length === 0) return;
+    const handleEliminarClientes = async () => {
+        if (clientesSeleccionados.length === 0) return;
 
-    const result = await Swal.fire({
-        title: `¿Estás seguro de que quieres eliminar ${clientesSeleccionados.length} cliente(s)?`,
-        text: "¡Esta acción no se puede deshacer!",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonColor: "#d33",
-        cancelButtonColor: "#3085d6",
-        confirmButtonText: "Sí, eliminar",
-        cancelButtonText: "Cancelar"
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-        // 1. Obtener token CSRF
-        const csrfRes = await axios.get('http://localhost:9000/csrf-token', {
-            withCredentials: true
-        });
-        const csrfToken = csrfRes.data.csrfToken;
-
-        // 2. Configurar headers
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken,
-            'csrf-token': csrfToken  // Agregar ambos nombres como dispositivos
-        };
-
-        // 3. Enviar solicitudes de eliminación - ¡CAMBIADO A LA RUTA CORRECTA!
-        const deletionPromises = clientesSeleccionados.map(id =>
-            axios.put(`http://localhost:9000/clientes/${id}`, 
-                { estado_eliminado: "eliminado" }, // Asegúrate que este sea el campo correcto
-                { 
-                    headers: headers,
-                    withCredentials: true 
-                }
-            )
-        );
-
-        await Promise.all(deletionPromises);
-
-        // 4. Actualizar estado del frontend (como dispositivos - mantener transparentes)
-        setClientes(prevClientes => {
-            const clientesActualizados = prevClientes.map(cliente =>
-                clientesSeleccionados.includes(cliente.id)
-                    ? { ...cliente, eliminado: true, estado_eliminado: 'eliminado' }
-                    : cliente
-            );
-            // Reordenar los clientes para que los eliminados vayan al final (como dispositivos)
-            return clientesActualizados.sort((a, b) =>
-                a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
-            );
+        const result = await Swal.fire({
+            title: `¿Estás seguro de que quieres marcar ${clientesSeleccionados.length > 1 ? 'estos clientes' : 'este cliente'} como "eliminado"?`, // Texto modificado
+            text: "Esta acción los inactivará, pero es reversible por un administrador.", // Texto modificado
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            cancelButtonColor: "#3085d6",
+            confirmButtonText: "Sí, marcar como eliminado", // Texto modificado
+            cancelButtonText: "Cancelar"
         });
 
-        setClientesSeleccionados([]);
-        Swal.fire("¡Eliminado!", "Cliente(s) eliminado(s) exitosamente.", "success");
-    } catch (error) {
-        console.error("Error al eliminar cliente(s):", error.response?.data || error.message);
-        Swal.fire("Error", error.response?.data?.message || "Error al eliminar cliente(s)", "error");
-    }
-};
+        if (!result.isConfirmed) return;
+
+        try {
+            await obtenerCsrfToken();
+            await Promise.all(clientesSeleccionados.map(id => eliminarCliente(id)));
+
+            setClientes(prevClientes => {
+                const clientesActualizados = prevClientes.map(cliente =>
+                    clientesSeleccionados.includes(cliente.id)
+                        ? { ...cliente, eliminado: true, estado: 'eliminado' } // Actualizar 'estado' también
+                        : cliente
+                );
+                return clientesActualizados.sort((a, b) =>
+                    a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
+                );
+            });
+
+            setClientesSeleccionados([]);
+            Swal.fire("¡Marcado como Eliminado!", "Cliente(s) marcado(s) como eliminado(s) exitosamente.", "success"); // Texto modificado
+        } catch (error) {
+            console.error("Error al marcar cliente(s) como eliminado:", error.response?.data || error.message); // Texto modificado
+            Swal.fire("Error", error.response?.data?.message || "Error al marcar cliente(s) como eliminado", "error"); // Texto modificado
+        }
+    };
 
     const handleCambiarPagina = (numeroPagina) => {
         setPaginaActual(numeroPagina);
@@ -265,7 +225,6 @@ const handleEliminarClientes = async () => {
                 client.id === updatedClientData.id ? { ...client, ...updatedClientData } : client
             );
             
-            // Reordenar para que los eliminados vayan al final (como dispositivos)
             return clientesActualizados.sort((a, b) =>
                 a.eliminado === b.eliminado ? 0 : a.eliminado ? 1 : -1
             );
@@ -396,11 +355,10 @@ const handleEliminarClientes = async () => {
                     onClose={() => setClienteSeleccionado(null)}
                     onUpdateCliente={handleUpdateCliente}
                     onDelete={(id) => {
-                        // Solo actualizar localmente, el modal ya hizo la llamada a la API
                         setClientes(prevClientes => {
                             const clientesActualizados = prevClientes.map((cliente) =>
                                 cliente.id === id
-                                    ? { ...cliente, eliminado: true, estado_eliminado: 'eliminado' }
+                                    ? { ...cliente, eliminado: true, estado: 'eliminado' }
                                     : cliente
                             );
                             return clientesActualizados.sort((a, b) =>

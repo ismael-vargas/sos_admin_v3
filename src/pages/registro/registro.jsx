@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import "../../assets/scss/registro.scss";
 import personImg from "../../assets/img/person.png";
-import instance from "../../api/axios";
+import { registrarUsuario, obtenerCsrfToken } from "../../services/usuarios";
 
 // Importa los iconos que necesites
 // Asegúrate de importar FaEye y FaEyeSlash para el "ojito"
@@ -34,17 +34,15 @@ const Registro = () => {
 
  useEffect(() => {
   setIsLoaded(true);
-
   const fetchCsrfToken = async () => {
     try {
-      const response = await instance.get("/csrf-token", { withCredentials: true }); // <-- ¡Asegúrate de esto!
-      setCsrfToken(response.data.data.csrfToken);
-      console.log('Token obtenido:', response.data.data.csrfToken);
+      const token = await obtenerCsrfToken();
+      setCsrfToken(token);
+      console.log('Token obtenido:', token);
     } catch (error) {
       console.error("Error al obtener el token CSRF:", error);
     }
   };
-
   fetchCsrfToken();
 }, []);
 
@@ -62,38 +60,15 @@ const togglePasswordVisibility = () => {
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-
-  // ✅ Verificar que el token existe antes de enviar
-  console.log('Token a enviar:', csrfToken);
-  
   if (!csrfToken) {
     setErrorMessage("Token CSRF no disponible. Recarga la página.");
     return;
   }
-
   try {
-    const response = await instance.post(
-      "/usuarios/registro",
-      {
-        nombre: formData.nombre,
-        cedula_identidad: formData.cedula_identidad,
-        direccion: formData.direccion,
-        correo_electronico: formData.correo_electronico,
-        contrasena: formData.contrasena,
-        fecha_nacimiento: formData.fecha_nacimiento,
-        estado: formData.estado
-      },
-      {
-        headers: {
-          "X-CSRF-Token": csrfToken
-        },
-        withCredentials: true // <-- Puedes dejarlo aquí también
-      }
-    );
+    const response = await registrarUsuario(formData, csrfToken);
+    console.log('Respuesta del servidor:', response);  // <-- solo response
 
-    console.log('Respuesta del servidor:', response.data);  // ✅ Debug
-
-    if (response.status === 201) {
+    if (response.message === "Usuario registrado exitosamente.") {
       Swal.fire({
         icon: "success",
         title: "¡Usuario creado!",
@@ -105,7 +80,7 @@ const handleSubmit = async (e) => {
         handleNavigateBack(e); // Usamos nuestra función para animar la salida
       });
     } else {
-      setErrorMessage(response.data.message || "Error al registrar el usuario.");
+      setErrorMessage(response.message || "Error al registrar el usuario.");
     }
   } catch (error) {
     console.error("Error completo:", error);

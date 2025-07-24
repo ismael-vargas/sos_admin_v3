@@ -2,15 +2,12 @@
 /* -------------------*/
 import React from "react";
 import PropTypes from "prop-types";
-import axios from 'axios';
-
-// Obtener la URL base desde variables de entorno o usar un valor por defecto
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://192.168.1.31:9000';
+import Swal from "sweetalert2"; // Asegúrate de tener SweetAlert2 instalado
+import { eliminarDispositivo } from '../../services/dispositivos'; // Importa la función de la API
 
 // Componente modal para mostrar información de un dispositivo
-function DispositivoModal({ dispositivo, onClose, onDelete, csrfToken }) {
+function DispositivoModal({ dispositivo, onClose, onDelete }) { // csrfToken ya no es necesario pasarlo como prop
   const handleDelete = async () => {
-    // Usar SweetAlert2 directamente en el modal para confirmar eliminación
     if (window.Swal) {
       const result = await window.Swal.fire({
         title: '¿Desea eliminar este dispositivo?',
@@ -27,31 +24,13 @@ function DispositivoModal({ dispositivo, onClose, onDelete, csrfToken }) {
 
       if (result.isConfirmed) {
         try {
-          // Verificar que tenemos el token CSRF
-          if (!csrfToken) {
-            throw new Error('Token CSRF no disponible');
-          }
+          // Llamar a la función de la API para eliminar el dispositivo
+          await eliminarDispositivo(dispositivo.id);
 
-          // Verificar que tenemos el ID del dispositivo
-          if (!dispositivo || !dispositivo.id) {
-            throw new Error('ID del dispositivo no válido');
-          }
-
-          console.log('Eliminando dispositivo:', dispositivo.id, 'con token:', csrfToken);
-          
-          // Eliminar dispositivo usando la API directamente con token CSRF
-          await axios.delete(`${API_BASE_URL}/dispositivos/${dispositivo.id}`, {
-            headers: { 
-              'X-CSRF-Token': csrfToken,
-              'Content-Type': 'application/json'
-            },
-            withCredentials: true
-          });
-          
           // Llamar a la función onDelete del padre para actualizar la lista (solo local)
           onDelete(dispositivo.id);
           onClose(); // Cerrar el modal después de eliminar
-          
+
           // Mostrar mensaje de éxito
           window.Swal.fire({
             icon: "success",
@@ -66,7 +45,7 @@ function DispositivoModal({ dispositivo, onClose, onDelete, csrfToken }) {
           window.Swal.fire({
             icon: "error",
             title: "Error",
-            text: `Hubo un error al eliminar el dispositivo: ${error.message}`,
+            text: `Hubo un error al eliminar el dispositivo: ${error.message || error.response?.data?.error || 'Error desconocido'}`,
           });
         }
       }
@@ -74,14 +53,9 @@ function DispositivoModal({ dispositivo, onClose, onDelete, csrfToken }) {
       // Fallback si SweetAlert2 no está disponible
       if (window.confirm(`¿Está seguro de que desea eliminar el dispositivo "${dispositivo.nombre}"?`)) {
         try {
-          // Eliminar dispositivo usando la API directamente con token CSRF
-          await axios.delete(`${API_BASE_URL}/dispositivos/${dispositivo.id}`, {
-            headers: { 'X-CSRF-Token': csrfToken }
-          });
-          
-          // Llamar a la función onDelete del padre para actualizar la lista
-          await onDelete(dispositivo.id);
-          onClose(); // Cerrar el modal después de eliminar
+          await eliminarDispositivo(dispositivo.id);
+          onDelete(dispositivo.id);
+          onClose();
         } catch (error) {
           console.error('Error al eliminar dispositivo:', error);
           alert("Error al eliminar el dispositivo");
@@ -267,7 +241,6 @@ DispositivoModal.propTypes = {
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
-  csrfToken: PropTypes.string.isRequired,
 };
 
 export default DispositivoModal;

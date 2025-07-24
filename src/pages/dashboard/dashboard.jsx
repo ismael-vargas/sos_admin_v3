@@ -6,7 +6,16 @@ import { Edit2, Save, Smartphone, Monitor, Upload, ArrowRight, ArrowLeft } from 
 import '../../assets/scss/dashboard.scss';
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import axios from 'axios'; // Importar axios
+// Importar las funciones de la API
+import {
+    obtenerCsrfToken,
+    obtenerContenidoApp,
+    crearContenidoApp,
+    actualizarContenidoApp,
+    obtenerContenidoPagina,
+    crearContenidoPagina,
+    actualizarContenidoPagina
+} from '../../services/dashboard.js'; // Ajusta la ruta si es necesario
 
 // Componente de texto editable
 const EditableText = ({ text, onSave, editing, style = {}, className = '' }) => {
@@ -170,15 +179,21 @@ const AppContentEditor = ({ values, onChange, onSave, onNavigateToPageEditor }) 
                 <textarea className="form-control" rows={2} value={values.visionContent} onChange={e => onChange('visionContent', e.target.value)} />
             </div>
             <div className="d-flex justify-content-between align-items-center">
-                <button className="btn btn-success px-4" type="button" onClick={onSave}>
-                    Guardar
-                </button>
+               <button 
+    className="btn btn-primary px-4 d-flex align-items-center gap-2 rounded-pill shadow-sm" 
+    type="button" 
+    onClick={onSave}
+    style={{ backgroundColor: '#0891b2', borderColor: '#0891b2', fontSize: '0.9rem', fontWeight: '500' }}
+>
+    <Save size={18} className="me-2" /> Guardar
+</button>
                 <button 
-                    className="btn btn-info px-3 d-flex align-items-center gap-2" 
+                    className="btn btn-success px-4 d-flex align-items-center gap-2 rounded-pill shadow-sm" 
                     type="button" 
                     onClick={onNavigateToPageEditor}
+                    style={{ backgroundColor: '#6c757d', borderColor: '#6c757d', fontSize: '0.9rem', fontWeight: '500' }} // Mantener estilos de fuente si son específicos
                 >
-                    Ir a Editor de Página <ArrowRight size={18} />
+                    Ir a Editor de Página <ArrowRight size={14} />
                 </button>
             </div>
         </div>
@@ -392,14 +407,8 @@ const PageContentEditor = ({ onBack }) => {
 
             try {
                 // Intentar obtener la configuración de la página (asumiendo una única configuración)
-                const response = await axios.get('http://localhost:1000/pagina/listar', {
-                    headers: {
-                        "CSRF-Token": csrfToken,
-                    },
-                    withCredentials: true,
-                });
+                const data = await obtenerContenidoPagina();
 
-                const data = response.data;
                 if (data) {
                     setPageValues({
                         id: data.id,
@@ -488,29 +497,16 @@ const PageContentEditor = ({ onBack }) => {
             let res;
             if (pageValues.id) {
                 // Si la página ya existe, actualizarla
-                res = await axios.put(`http://localhost:1000/pagina/actualizar/${pageValues.id}`, body, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'CSRF-Token': csrfToken
-                    },
-                    withCredentials: true,
-                });
+                res = await actualizarContenidoPagina(pageValues.id, body);
             } else {
                 // Si la página no existe, crearla
-                res = await axios.post('http://localhost:1000/pagina/crear', body, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'CSRF-Token': csrfToken
-                    },
-                    withCredentials: true,
-                });
+                res = await crearContenidoPagina(body);
                 // Si es una creación exitosa, actualiza el ID local
-                if (res.data && res.data.id) {
-                    setPageValues(prev => ({ ...prev, id: res.data.id }));
+                if (res && res.id) {
+                    setPageValues(prev => ({ ...prev, id: res.id }));
                 }
             }
 
-            if (res.status !== 200 && res.status !== 201) throw new Error(res.data.message || 'Error al guardar');
             Swal.fire({
                 icon: 'success',
                 title: '¡Cambios guardados!',
@@ -533,34 +529,43 @@ const PageContentEditor = ({ onBack }) => {
     if (loadingPageContent) return <div className="text-center py-5">Cargando contenido de la página...</div>;
 
     return (
-        <div style={{ minWidth: 0, maxWidth: 400, width: '100%' }}>
-            <h4 className="mb-3">Editor de Contenido de Página</h4>
-            <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="bg-white p-4 rounded-lg shadow-lg" style={{ minWidth: 0, maxWidth: 400, width: '100%', border: '1px solid #e0e0e0' }}>
+            <h4 className="mb-4 text-center text-gray-800 font-bold">Contenido de Página</h4>
+            
+            <div className="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
                 <button 
-                    className="btn btn-info px-3 d-flex align-items-center gap-2" 
+                    className="btn btn-outline-secondary px-3 d-flex align-items-center gap-2 rounded-pill shadow-sm" 
                     type="button" 
                     onClick={onBack}
+                    style={{ fontSize: '0.9rem', fontWeight: '500' }}
                 >
-                    <ArrowLeft size={18} /> Volver a Editor App
+                    <ArrowLeft size={16} /> Volver a Editor App
                 </button>
-                <button className="btn btn-success px-4" type="button" onClick={handleSavePageContent}>
-                    Guardar
+                <button 
+                    className="btn btn-primary px-4 rounded-pill shadow-sm" 
+                    type="button" 
+                    onClick={handleSavePageContent}
+                    style={{ backgroundColor: '#0891b2', borderColor: '#0891b2', fontSize: '0.9rem', fontWeight: '500' }}
+                >
+                    <Save size={16} className="me-2" /> Guardar
                 </button>
             </div>
 
-            <div className="mb-3 text-center">
-                <label className="form-label">Logo de la Página</label>
-                <div className="position-relative d-inline-block">
+            <div className="mb-4 text-center">
+                <label className="form-label text-gray-700 font-semibold mb-2">Logo de la Página</label>
+                <div 
+                    className="position-relative d-inline-block p-2 border rounded-lg shadow-sm hover:shadow-md transition-all duration-300 ease-in-out"
+                    style={{ borderColor: '#e0e0e0' }}
+                >
                     <img
                         src={pageValues.logoUrl}
                         alt="Logo de la Página"
-                        className="mb-2 rounded"
+                        className="rounded"
                         style={{
                             width: '150px',
                             height: '50px',
                             objectFit: 'contain',
                             cursor: 'pointer',
-                            border: '1px solid #ccc'
                         }}
                         onClick={() => fileInputRef.current.click()}
                     />
@@ -568,7 +573,7 @@ const PageContentEditor = ({ onBack }) => {
                         className="position-absolute top-50 start-50 translate-middle"
                         style={{ pointerEvents: 'none' }}
                     >
-                        <Upload size={24} className="text-dark opacity-75" />
+                        <Upload size={24} className="text-gray-500 opacity-75" />
                     </div>
                     <input
                         type="file"
@@ -581,38 +586,42 @@ const PageContentEditor = ({ onBack }) => {
             </div>
 
             <div className="mb-3">
-                <label className="form-label">Nombre de la Página</label>
+                <label className="form-label text-gray-700 font-semibold mb-1">Nombre de la Página</label>
                 <input 
-                    className="form-control" 
+                    className="form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition ease-in-out duration-150" 
                     value={pageValues.nombrePagina} 
                     onChange={e => handleChange('nombrePagina', e.target.value)} 
+                    style={{ padding: '0.75rem 1rem' }}
                 />
             </div>
             <div className="mb-3">
-                <label className="form-label">Descripción de la Página</label>
+                <label className="form-label text-gray-700 font-semibold mb-1">Descripción de la Página</label>
                 <textarea 
-                    className="form-control" 
+                    className="form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition ease-in-out duration-150" 
                     rows={3} 
                     value={pageValues.descripcionPagina} 
                     onChange={e => handleChange('descripcionPagina', e.target.value)} 
+                    style={{ padding: '0.75rem 1rem' }}
                 />
             </div>
             <div className="mb-3">
-                <label className="form-label">Misión</label>
+                <label className="form-label text-gray-700 font-semibold mb-1">Misión</label>
                 <textarea 
-                    className="form-control" 
+                    className="form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition ease-in-out duration-150" 
                     rows={3} 
                     value={pageValues.mision} 
                     onChange={e => handleChange('mision', e.target.value)} 
+                    style={{ padding: '0.75rem 1rem' }}
                 />
             </div>
             <div className="mb-3">
-                <label className="form-label">Visión</label>
+                <label className="form-label text-gray-700 font-semibold mb-1">Visión</label>
                 <textarea 
-                    className="form-control" 
+                    className="form-control rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition ease-in-out duration-150" 
                     rows={3} 
                     value={pageValues.vision} 
                     onChange={e => handleChange('vision', e.target.value)} 
+                    style={{ padding: '0.75rem 1rem' }}
                 />
             </div>
         </div>
@@ -645,11 +654,7 @@ const Dashboard = () => {
         const fetchContent = async () => {
             if (!csrfFetched.current) {
                 try {
-                    const csrfRes = await axios.get('http://localhost:1000/csrf-token', {
-                        withCredentials: true
-                    });
-                    const token = csrfRes.data.data?.csrfToken || csrfRes.data.csrfToken;
-                    localStorage.setItem("csrfToken", token);
+                    await obtenerCsrfToken();
                     csrfFetched.current = true;
                 } catch (error) {
                     console.error("Error al obtener el token CSRF:", error.message);
@@ -664,10 +669,7 @@ const Dashboard = () => {
             }
 
             try {
-                const response = await axios.get('http://localhost:1000/contenido_app/obtener', {
-                    withCredentials: true
-                });
-                const data = response.data;
+                const data = await obtenerContenidoApp();
 
                 setEditorValues({
                     gradientStart: data.gradientStart || '#026b6b',
@@ -687,8 +689,7 @@ const Dashboard = () => {
                 // Si el contenido no se encuentra, intentar crearlo con valores por defecto
                 if (error.response && error.response.status === 404 || (error.response && error.response.status === 500 && error.response.data.message === 'Contenido no encontrado para actualizar. Considere usar POST /crear primero.')) {
                     try {
-                        const csrfToken = localStorage.getItem("csrfToken");
-                        await axios.post('http://localhost:1000/contenido_app/crear', {
+                        await crearContenidoApp({
                             gradientStart: '#026b6b',
                             gradientEnd: '#2D353C',
                             fontFamily: 'Open Sans',
@@ -704,11 +705,6 @@ const Dashboard = () => {
                             visionContent: 'Contenido por defecto de visión.',
                             logoApp: 'https://placehold.co/150x50/cccccc/ffffff?text=LogoApp',
                             estado: 'activo'
-                        }, {
-                            headers: {
-                                "CSRF-Token": csrfToken,
-                            },
-                            withCredentials: true,
                         });
                         // Una vez creado, intentar obtenerlo de nuevo
                         fetchContent(); 
@@ -807,15 +803,7 @@ const Dashboard = () => {
         };
 
         try {
-            const res = await axios.put('http://localhost:1000/contenido_app/actualizar', body, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'CSRF-Token': csrfToken
-                },
-                withCredentials: true,
-            });
-
-            if (res.status !== 200) throw new Error(res.data.message || 'Error al guardar');
+            await actualizarContenidoApp(body);
             Swal.fire({
                 icon: 'success',
                 title: '¡Cambios realizados!',

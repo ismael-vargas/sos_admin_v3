@@ -1,23 +1,20 @@
 /* perfil.jsx */
 /* -------------------*/
-import React, { useState, useEffect } from 'react'; // Importa React y los hooks useState y useEffect para manejar estados y efectos secundarios.
-import { Link } from "react-router-dom"; // Importa Link para la navegación entre rutas.
-import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx"; // Importa componentes personalizados para el panel.
-import { User, Mail, MapPin, Camera, Edit2, Save, X, IdCard } from 'lucide-react'; // Agregar IdCard
-import axios from 'axios'; // Importa axios para realizar solicitudes HTTP.
-import Swal from 'sweetalert2'; // Importa SweetAlert2 para mostrar alertas estilizadas.
-import "../../assets/scss/perfil.scss"; // Importa el archivo de estilos SCSS para este componente.
+import React, { useState, useEffect } from 'react';
+import { Link } from "react-router-dom";
+import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
+import { User, Mail, MapPin, Camera, Edit2, Save, X, IdCard } from 'lucide-react';
+import Swal from 'sweetalert2';
+import "../../assets/scss/perfil.scss";
+import { obtenerDetalleUsuario, actualizarPerfilUsuario, cambiarContrasenaUsuario, obtenerCsrfToken } from "../../services/usuarios";
 
 const Perfil = () => {
-  // Estado para controlar si se está editando el perfil o no.
   const [isEditing, setIsEditing] = useState(false);
-  // Estado para el perfil del usuario
   const [profile, setProfile] = useState(null);
-  // Estado temporal para manejar los datos del formulario de edición.
   const [tempProfile, setTempProfile] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordData, setPasswordData] = useState({ nuevaContrasena: '' });
-  const [showPasswordInput, setShowPasswordInput] = useState(false); // --- AGREGAR ESTADO PARA MOSTRAR INPUT DE CONTRASEÑA ---
+  const [showPasswordInput, setShowPasswordInput] = useState(false);
 
   // Obtener los datos del usuario que ha iniciado sesión
   useEffect(() => {
@@ -27,10 +24,9 @@ const Perfil = () => {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
+        const data = await obtenerDetalleUsuario(usuarioId);
 
         // --- Normaliza la fecha de nacimiento ---
-        let data = response.data;
         if (data.fecha_nacimiento && !isNaN(new Date(data.fecha_nacimiento).getTime())) {
           const d = new Date(data.fecha_nacimiento);
           data.fecha_nacimiento = d.toISOString().substring(0, 10);
@@ -48,51 +44,28 @@ const Perfil = () => {
     fetchProfile();
   }, []);
 
-  // Función para obtener el token CSRF
-  const fetchCsrfToken = async () => {
-    try {
-      const response = await axios.get('http://localhost:1000/csrf-token', { withCredentials: true });
-      // Corrige aquí:
-      const csrfToken = response.data.data?.csrfToken || response.data.csrfToken;
-      localStorage.setItem("csrfToken", csrfToken);
-      return csrfToken;
-    } catch (error) {
-      console.error("Error al obtener CSRF token:", error.message);
-      return null;
-    }
-  };
-
   // Maneja los cambios en los campos del formulario
   const handleInputChange = (e) => {
-    const { name, value } = e.target; // Obtiene el nombre y valor del campo modificado.
+    const { name, value } = e.target;
     setTempProfile((prev) => ({
-      ...prev, // Copia el estado anterior.
-      [name]: value // Actualiza el campo correspondiente.
+      ...prev,
+      [name]: value
     }));
   };
 
   // Guarda los cambios al enviar el formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const csrfToken = await fetchCsrfToken();
+    await obtenerCsrfToken();
 
     const dataToSend = { ...tempProfile };
-
-    // Solo elimina la fecha si está realmente vacía
     if (!dataToSend.fecha_nacimiento || dataToSend.fecha_nacimiento === '') {
       delete dataToSend.fecha_nacimiento;
     }
 
     try {
-      const response = await axios.put(
-        `http://localhost:1000/usuarios/actualizar/${profile.id}`,
-        dataToSend,
-        {
-          headers: { "X-CSRF-Token": csrfToken },
-          withCredentials: true,
-        }
-      );
-      setProfile(response.data);
+      const updated = await actualizarPerfilUsuario(profile.id, dataToSend);
+      setProfile(updated);
       setIsEditing(false);
       Swal.fire({
         icon: "success",
@@ -113,8 +86,8 @@ const Perfil = () => {
 
   // Cancela la edición y restaura los datos originales
   const handleCancel = () => {
-    setTempProfile(profile); // Restaura los datos del perfil original.
-    setIsEditing(false); // Sal del modo de edición.
+    setTempProfile(profile);
+    setIsEditing(false);
   };
 
   // Función para obtener las iniciales del nombre del usuario
@@ -144,17 +117,17 @@ const Perfil = () => {
     }
   };
 
-  // Estilos personalizados para las tarjetas de información.
   const customStyles = {
     infoCard: {
-      transition: "transform 0.3s ease-in-out", // Transición suave para animación.
-      cursor: "pointer" // Cambia el cursor al pasar el mouse.
+      transition: "transform 0.3s ease-in-out",
+      cursor: "pointer"
     }
   };
 
+  // Cambiar contraseña usando el servicio
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    const csrfToken = await fetchCsrfToken(); // <-- AQUÍ PIDES EL TOKEN ACTUALIZADO
+    await obtenerCsrfToken();
     if (!passwordData.nuevaContrasena || passwordData.nuevaContrasena.length < 6) {
       Swal.fire({
         icon: 'warning',
@@ -165,31 +138,16 @@ const Perfil = () => {
     }
     try {
       const usuarioId = profile?.id || localStorage.getItem("usuario_id");
-      const response = await axios.put(
-        `http://localhost:1000/usuarios/actualizar/${usuarioId}`,
-        { contrasena: passwordData.nuevaContrasena },
-        {
-          headers: { "X-CSRF-Token": csrfToken }, // <--- CORREGIDO
-          withCredentials: true
-        }
-      );
-      if (response.status === 200) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Contraseña actualizada',
-          text: 'Tu contraseña ha sido cambiada correctamente.',
-          timer: 1500,
-          showConfirmButton: false,
-        });
-        setShowPasswordInput(false);
-        setPasswordData({ nuevaContrasena: '' });
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: response.data?.message || 'No se pudo actualizar la contraseña.'
-        });
-      }
+      await cambiarContrasenaUsuario(usuarioId, passwordData.nuevaContrasena);
+      Swal.fire({
+        icon: 'success',
+        title: 'Contraseña actualizada',
+        text: 'Tu contraseña ha sido cambiada correctamente.',
+        timer: 1500,
+        showConfirmButton: false,
+      });
+      setShowPasswordInput(false);
+      setPasswordData({ nuevaContrasena: '' });
     } catch (error) {
       Swal.fire({
         icon: 'error',
@@ -387,9 +345,9 @@ const Perfil = () => {
                           {/* Tarjeta de configuración de contraseña DEBAJO DE LAS DOS COLUMNAS */}
                           <div className="col-12 col-md-6 mt-4 password-card-col">
                             <div className="info-card password-card mb-0 d-flex flex-column align-items-center text-center p-4">
-                              <span className="info-card-icon mb-2"><i className="bi bi-lock-fill text-primary" style={{fontSize: '1.7rem'}}></i></span>
-                              <span className="fw-semibold mb-1" style={{fontSize: '1.15rem'}}>Contraseña</span>
-                              <span className="info-card-text text-muted mb-3" style={{fontSize: '0.98rem'}}>
+                              <span className="info-card-icon mb-2"><i className="bi bi-lock-fill text-primary" style={{ fontSize: '1.7rem' }}></i></span>
+                              <span className="fw-semibold mb-1" style={{ fontSize: '1.15rem' }}>Contraseña</span>
+                              <span className="info-card-text text-muted mb-3" style={{ fontSize: '0.98rem' }}>
                                 Actualiza tu contraseña periódicamente para mayor seguridad.
                               </span>
                               {!showPasswordInput && (
