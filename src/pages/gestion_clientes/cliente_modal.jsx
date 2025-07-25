@@ -11,8 +11,8 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
   const [editandoEstado, setEditandoEstado] = useState(false);
   const [isDeletedLocally, setIsDeletedLocally] = useState(cliente.eliminado);
   const [csrfToken, setCsrfToken] = useState('');
-  const [numerosCliente, setNumerosCliente] = useState([]);
-  const [loadingNumeros, setLoadingNumeros] = useState(true);
+  const [numerosCliente, setNumerosCliente] = useState([]); // State to store client numbers
+  const [loadingNumeros, setLoadingNumeros] = useState(true); // State for loading indicator
 
   useEffect(() => {
     obtenerCsrfToken().then(setCsrfToken).catch(() =>
@@ -22,17 +22,20 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
 
   useEffect(() => {
     const fetchNumeros = async () => {
-      setLoadingNumeros(true);
+      setLoadingNumeros(true); // Set loading to true before fetching
       try {
-        const data = await obtenerNumerosCliente(cliente.id);
-        setNumerosCliente(data);
+        const data = await obtenerNumerosCliente(cliente.id); // Fetch numbers using the client's ID
+        setNumerosCliente(data); // Update state with fetched numbers
       } catch (err) {
-        setNumerosCliente([]);
+        console.error("Error al obtener números del cliente:", err);
+        setNumerosCliente([]); // Clear numbers on error
       }
-      setLoadingNumeros(false);
+      setLoadingNumeros(false); // Set loading to false after fetching
     };
-    if (cliente.id) fetchNumeros();
-  }, [cliente.id]);
+    if (cliente.id) { // Fetch numbers only if client.id is available
+      fetchNumeros();
+    }
+  }, [cliente.id]); // Re-run effect when client.id changes
 
   const handleEstadoChange = (e) => setEstadoLocal(e.target.value);
 
@@ -66,7 +69,6 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
   const formatFechaNacimiento = (fecha) => {
     if (!fecha) return "N/A";
     try {
-      // Intentar analizar la fecha en varios formatos si es necesario
       const dateObj = new Date(fecha);
       if (!isNaN(dateObj.getTime())) {
         return dateObj.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -86,7 +88,7 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
     >
       <div
         className="modal-dialog modal-xl"
-        style={{ maxWidth: "900px" }}
+        style={{ maxWidth: "700px" }}
         role="document"
       >
         <div 
@@ -150,86 +152,85 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
             </div>
             <h3 className="text-center fw-bold mb-4" style={{ fontSize: "1.18rem" }}>{cliente.nombre}</h3>
             <div className="row g-3 mb-2">
-              <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem' }} />
-                  <div>
-                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>ID:</div>
-                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.id}</div>
+              <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem', marginBottom: '4px' }} />
+                  <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>ID:</div>
+                  <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>{cliente.id}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                  <FaEnvelope style={{ color: '#0891b2', fontSize: '1.25rem', marginBottom: '4px' }} />
+                  <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>Correo:</div>
+                  <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>{cliente.correo || cliente.correo_electronico || "N/A"}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem', marginBottom: '4px' }} />
+                  <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>Cédula:</div>
+                  <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>{cliente.cedula || cliente.cedula_identidad || "N/A"}</div>
+                </div>
+              </div>
+              <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                  <FaMapMarkerAlt style={{ color: '#f59e42', fontSize: '1.25rem', marginBottom: '4px' }} />
+                  <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>Dirección:</div>
+                  <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>{cliente.direccion || "N/A"}</div>
+                </div>
+              </div>
+              {/* Fila con Fecha de Nacimiento y Número de Ayudas centrados */}
+              <div className="row g-3 mb-2">
+                <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                  <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                    <FaCalendarAlt style={{ color: '#28a745', fontSize: '1.25rem', marginBottom: '4px' }} />
+                    <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>Fecha de Nacimiento:</div>
+                    <div className="fw-semibold text-center" style={{ fontSize: "1.08rem" }}>{formatFechaNacimiento(cliente.fecha_nacimiento)}</div>
+                  </div>
+                </div>
+                <div className="col-12 col-md-6 d-flex justify-content-center align-items-center">
+                  <div className="bg-light rounded-3 p-3 h-100 shadow-sm w-100 d-flex flex-column align-items-center justify-content-center">
+                    <FaHandsHelping style={{ color: '#6366f1', fontSize: '1.25rem', marginBottom: '4px' }} />
+                    <div className="text-muted mb-1 text-center" style={{ fontSize: "1rem", fontWeight: 600 }}>Número de Ayudas:</div>
+                    <div className="fw-bold text-primary text-center" style={{ fontSize: "1.08rem" }}>{cliente.numero_ayudas || 0}</div>
                   </div>
                 </div>
               </div>
-              <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <FaEnvelope style={{ color: '#0891b2', fontSize: '1.25rem' }} />
-                  <div>
-                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Correo:</div>
-                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.correo || cliente.correo_electronico || "N/A"}</div>
+
+              {/* Teléfonos del Cliente */}
+              <div className="row mb-2 justify-content-center">
+                <div className="col-12 col-md-8 d-flex flex-column align-items-center mx-auto">
+                  <div className="mb-2 text-center fw-bold" style={{ fontSize: "1.08rem", color: "#0891b2" }}>
+                    Teléfonos del Cliente
                   </div>
-                </div>
-              </div>
-              <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <FaIdCard style={{ color: '#6366f1', fontSize: '1.25rem' }} />
-                  <div>
-                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Cédula:</div>
-                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.cedula || cliente.cedula_identidad || "N/A"}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <FaMapMarkerAlt style={{ color: '#f59e42', fontSize: '1.25rem' }} />
-                  <div>
-                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Dirección:</div>
-                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{cliente.direccion || "N/A"}</div>
-                  </div>
-                </div>
-              </div>
-              {/* Nuevo campo: Fecha de Nacimiento */}
-              <div className="col-12 col-md-6">
-                <div className="bg-light rounded-3 p-3 h-100 shadow-sm d-flex align-items-center gap-2">
-                  <FaCalendarAlt style={{ color: '#28a745', fontSize: '1.25rem' }} />
-                  <div>
-                    <div className="text-muted mb-1" style={{ fontSize: "1rem", fontWeight: 600 }}>Fecha de Nacimiento:</div>
-                    <div className="fw-semibold" style={{ fontSize: "1.08rem" }}>{formatFechaNacimiento(cliente.fecha_nacimiento)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="row mb-2 justify-content-center">
-              <div className="col-12 col-md-6 d-flex flex-column align-items-center mx-auto">
-                <div className="bg-light rounded-3 p-3 mb-2 shadow-sm d-flex align-items-center gap-2 justify-content-center w-100" style={{ minHeight: 60 }}>
-                  <FaHandsHelping style={{ color: '#6366f1', fontSize: '1.25rem' }} />
-                  <span className="text-muted" style={{ fontSize: '1rem', fontWeight: 600 }}>Número de Ayudas:</span>
-                  <span className="fw-bold text-primary" style={{ fontSize: '1.08rem' }}>{cliente.numero_ayudas || 0}</span>
-                </div>
-                {loadingNumeros ? (
-                  <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center" style={{ minHeight: 60 }}>
-                    <span className="text-muted">Cargando números...</span>
-                  </div>
-                ) : (
-                  numerosCliente.length === 0 ? (
+                  {loadingNumeros ? (
                     <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center" style={{ minHeight: 60 }}>
-                      <span className="text-muted">Sin números</span>
+                      <span className="text-muted">Cargando números...</span>
                     </div>
                   ) : (
-                    <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center d-flex flex-wrap justify-content-center align-items-center gap-2" style={{ minHeight: 60 }}>
-                      {numerosCliente.map((n, idx) => (
-                        <span key={n.id} className="badge mx-1" style={{ background: '#e0f7fa', color: '#0891b2', fontWeight: 700, fontSize: '1.01rem', border: '1px solid #10b981', borderRadius: 16, padding: '7px 16px' }}>
-                          <FaPhoneAlt className="me-1" style={{ color: '#0891b2' }} />{n.numero}
-                        </span>
-                      ))}
-                    </div>
-                  )
-                )}
+                    numerosCliente.length === 0 ? (
+                      <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center" style={{ minHeight: 60 }}>
+                        <span className="text-muted">Sin números</span>
+                      </div>
+                    ) : (
+                      <div className="bg-light rounded-3 p-3 shadow-sm w-100 text-center d-flex flex-wrap justify-content-center align-items-center gap-2" style={{ minHeight: 60 }}>
+                        {numerosCliente.map((n, idx) => (
+                          <span key={n.id} className="badge mx-1" style={{ background: '#e0f7fa', color: '#0891b2', fontWeight: 700, fontSize: '1.01rem', border: '1px solid #10b981', borderRadius: 16, padding: '7px 16px' }}>
+                            <FaPhoneAlt className="me-1" style={{ color: '#0891b2' }} />{n.numero}
+                          </span>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div 
+          <div
             className="modal-footer bg-light justify-content-center"
-            style={{ 
+            style={{
               padding: "20px 30px",
               borderRadius: "0 0 20px 20px",
               borderTop: "1px solid #dee2e6"
@@ -241,7 +242,7 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
               onClick={async () => {
                 const result = await Swal.fire({
                   title: `¿Eliminar cliente?`,
-                  html: `<b>${cliente.nombre}</b> será marcado como "eliminado" (inactivo). Esta acción es reversible por un administrador.`, // Texto modificado
+                  html: `<b>${cliente.nombre}</b> será marcado como "eliminado" (inactivo). Esta acción es reversible por un administrador.`,
                   icon: "warning",
                   showCancelButton: true,
                   confirmButtonColor: "#d33",
@@ -253,17 +254,17 @@ function ClienteModal({ cliente, onClose, onUpdateCliente, onDelete }) {
                   await handleEliminarCliente();
                   await Swal.fire({
                     icon: "success",
-                    title: "Cliente Marcado como Eliminado", // Título modificado
-                    text: `El cliente ha sido marcado como eliminado correctamente.`, // Texto modificado
+                    title: "Cliente Marcado como Eliminado",
+                    text: `El cliente ha sido marcado como eliminado correctamente.`,
                     timer: 1500,
                     showConfirmButton: false
                   });
                   onClose();
                 }
               }}
-              style={{ 
-                fontSize: "1.08rem", 
-                padding: "10px 32px", 
+              style={{
+                fontSize: "1.08rem",
+                padding: "10px 32px",
                 borderRadius: "14px",
                 fontWeight: "600"
               }}
@@ -293,7 +294,7 @@ ClienteModal.propTypes = {
     eliminado: PropTypes.bool,
     estado_eliminado: PropTypes.string,
     imagen: PropTypes.string,
-    fecha_nacimiento: PropTypes.string, // Añadido
+    fecha_nacimiento: PropTypes.string,
   }).isRequired,
   onClose: PropTypes.func.isRequired,
   onUpdateCliente: PropTypes.func.isRequired,

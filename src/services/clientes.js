@@ -36,9 +36,9 @@ export const eliminarCliente = async (id) => {
 };
 
 // Obtener números del cliente
-export const obtenerNumerosCliente = async (id) => {
+export const obtenerNumerosCliente = async (clienteId) => {
   const csrfToken = localStorage.getItem("csrfToken");
-  const response = await axios.get(`/clientes_numeros/cliente/${id}`, {
+  const response = await axios.get(`/clientes_numeros/listar/por-cliente/${clienteId}`, {
     headers: { "CSRF-Token": csrfToken }
   });
   return response.data;

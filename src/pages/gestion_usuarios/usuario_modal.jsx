@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import Swal from "sweetalert2"; // Importamos SweetAlert2
-import { FaEnvelope, FaIdCard, FaMapMarkerAlt } from 'react-icons/fa';
 import { FiUser, FiMail, FiCreditCard, FiMapPin } from "react-icons/fi";
 import "../../assets/scss/usuario_modal.scss";
 import CryptoJS from "crypto-js";
