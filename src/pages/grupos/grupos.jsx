@@ -1,18 +1,21 @@
 /* grupos.jsx */
 /* -------------------*/
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { listarGrupos, eliminarGrupo } from '../../services/grupos';
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search, Trash } from "lucide-react";
 import GrupoModal from "./grupo_modal.jsx";
+import Swal from "sweetalert2";
+import "../../assets/scss/informacion.scss";
 
-const BASE_IMG_URL = "/assets/img/"; // Base URL segura para las imágenes de grupos
+const BASE_IMG_URL = "/assets/img/";
 
 /**
  * Sanitizar texto para evitar riesgos de inyección.
  * @param {string} text - El texto a sanitizar.
  * @returns {string} El texto sanitizado.
  */
-const sanitizeText = (text) => text.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
+const sanitizeText = (text) => (text || "").replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]/g, "").trim();
 
 /**
  * Componente que representa una tarjeta de grupo.
@@ -28,19 +31,17 @@ function GrupoCard({ grupo, onVerInformacionClick, onSelectGrupo, isSelected, is
             onMouseEnter={(e) => {
                 if (!isDeleted) {
                     e.currentTarget.style.transform = "scale(1.05)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
                 }
             }}
             onMouseLeave={(e) => {
                 if (!isDeleted) {
                     e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "0 2px 6px rgba(0, 0, 0, 0.1)";
                 }
             }}
         >
             <div className="card border-0 shadow-sm rounded-3 overflow-hidden">
                 <img
-                    src={`${BASE_IMG_URL}${encodeURIComponent(grupo.imagen)}`} // Sanitizar URL
+                    src={`${BASE_IMG_URL}8.jpg`}
                     className="card-img-top"
                     alt={`Imagen de ${sanitizeText(grupo.nombre)}`}
                     style={{
@@ -77,21 +78,38 @@ function GrupoCard({ grupo, onVerInformacionClick, onSelectGrupo, isSelected, is
  * Componente principal para la gestión de grupos.
  */
 function GestionGrupos() {
-    const [grupos, setGrupos] = useState([
-        // Lista inicial de grupos
-        { id: 1, nombre: "Grupo A", imagen: "911.jpg", miembros: "50", eliminado: false },
-        { id: 2, nombre: "Grupo B", imagen: "7.jpg", miembros: "30", eliminado: false },
-        { id: 3, nombre: "Grupo C", imagen: "3.jpg", miembros: "60", eliminado: false },
-        { id: 4, nombre: "Grupo D", imagen: "grupo.jpg", miembros: "80", eliminado: false },
-        { id: 5, nombre: "Grupo E", imagen: "8.jpg", miembros: "70", eliminado: false },
-        { id: 6, nombre: "Grupo F", imagen: "6.jpg", miembros: "60", eliminado: false },
-    ]);
-
+    const [grupos, setGrupos] = useState([]);
     const [busqueda, setBusqueda] = useState("");
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(null);
     const [gruposSeleccionados, setGruposSeleccionados] = useState([]);
     const [paginaActual, setPaginaActual] = useState(1);
     const gruposPorPagina = 8;
+
+    // Cargar grupos desde el backend
+    useEffect(() => {
+        const fetchGrupos = async () => {
+            try {
+                const data = await listarGrupos();
+                const gruposAdaptados = data.map((g) => ({
+                    id: g.id,
+                    nombre: g.nombre,
+                    miembros: g.miembros || '',
+                    eliminado: g.estado === 'eliminado',
+                    imagen: '8.jpg',
+                    estado: g.estado,
+                    descripcion: g.descripcion || '',
+                }));
+                setGrupos(gruposAdaptados);
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al cargar grupos',
+                    text: error.response?.data?.message || error.message,
+                });
+            }
+        };
+        fetchGrupos();
+    }, []);
 
     const gruposFiltrados = grupos.filter((grupo) =>
         sanitizeText(grupo.nombre.toLowerCase()).includes(sanitizeText(busqueda.toLowerCase()))
@@ -108,13 +126,46 @@ function GestionGrupos() {
 
     const totalPaginas = Math.ceil(gruposOrdenados.length / gruposPorPagina);
 
-    const handleEliminarGrupos = useCallback(() => {
-        const gruposActualizados = grupos.map((grupo) =>
-            gruposSeleccionados.includes(grupo.id) ? { ...grupo, eliminado: true } : grupo
-        );
-        setGrupos(gruposActualizados);
-        setGruposSeleccionados([]);
-    }, [grupos, gruposSeleccionados]);
+    // Eliminar grupos seleccionados (borrado lógico)
+    const handleEliminarGrupos = useCallback(async () => {
+        if (gruposSeleccionados.length === 0) return;
+        const confirm = await Swal.fire({
+            title: '¿Está seguro de eliminar los grupos seleccionados?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
+        if (!confirm.isConfirmed) return;
+        try {
+            for (const id of gruposSeleccionados) {
+                await eliminarGrupo(id);
+            }
+            setGrupos((prev) =>
+                prev.map((g) =>
+                    gruposSeleccionados.includes(g.id) ? { ...g, eliminado: true } : g
+                )
+            );
+            setGruposSeleccionados([]);
+            Swal.fire({
+                icon: 'success',
+                title: '¡Eliminación exitosa!',
+                text: 'Los grupos seleccionados han sido eliminados.',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al eliminar',
+                text: error.response?.data?.message || error.message,
+            });
+        }
+    }, [gruposSeleccionados]);
 
     const handleSeleccionarGrupo = useCallback(
         (id) => {
@@ -124,7 +175,7 @@ function GestionGrupos() {
                     : [...prevSeleccionados, id]
             );
         },
-        [setGruposSeleccionados]
+        []
     );
 
     return (

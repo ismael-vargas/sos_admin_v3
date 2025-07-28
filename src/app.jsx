@@ -3,7 +3,7 @@ import { AppSettings } from './config/app-settings.js';
 import { slideToggle } from './composables/slideToggle.js';
 import { isAuthenticated } from './config/auth';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // Asegúrate de que axios esté correctamente importado
+import { guardarPreferenciasUsuario, obtenerPreferenciasUsuario } from './services/usuarios_preferencias';
 
 import Header from './components/header/header.jsx';
 import Sidebar from './components/sidebar/sidebar.jsx';
@@ -43,53 +43,7 @@ function App() {
 	const navigate = useNavigate();
 	const usuarioId = localStorage.getItem('usuario_id'); // Obtener el usuarioId del localStorage
 
-    // Función para guardar preferencias en el backend
-    // sidebarMinimizado en el backend significa: true=minificado (encogido), false=no minificado (abierto)
-    const guardarPreferenciasUsuario = async (idUsuario, tema, sidebarMinimizadoBackendValue) => {
-        const csrfToken = localStorage.getItem("csrfToken");
-        if (!csrfToken) {
-            console.error("CSRF token no disponible.");
-            return;
-        }
-        try {
-            const preferenceData = {
-                tema: tema,
-                sidebarMinimizado: sidebarMinimizadoBackendValue, 
-            };
-
-            // Intenta actualizar las preferencias (PUT)
-            await axios.put(`http://localhost:1000/usuarios/preferencias/actualizar/${idUsuario}`, 
-                preferenceData,
-                {
-                    headers: {
-                        "CSRF-Token": csrfToken,
-                    },
-                    withCredentials: true,
-                }
-            );
-            console.log("Preferencias actualizadas en el backend.");
-        } catch (error) {
-            // Si el error es un "Preferencias no encontradas" (404), intenta crearlas (POST)
-            if (error.response && error.response.status === 404) {
-                try {
-                    await axios.post(`http://localhost:1000/usuarios/preferencias/registrar/${idUsuario}`, 
-                        { tema, sidebarMinimizado: sidebarMinimizadoBackendValue },
-                        {
-                            headers: {
-                                "CSRF-Token": csrfToken,
-                            },
-                            withCredentials: true,
-                        }
-                    );
-                    console.log("Preferencias registradas por primera vez en el backend.");
-                } catch (err) {
-                    console.error('Error al crear preferencias:', err.response?.data?.message || err.message);
-                }
-            } else {
-                console.error('Error al guardar preferencias:', error.response?.data?.message || error.message);
-            }
-        }
-    };
+	// Función importada desde servicios/usuarios_preferencias.js
 
 	const handleSetAppHeaderNone = (value) => {
 		setAppHeaderNone(value);
@@ -270,19 +224,9 @@ function App() {
 		const cargarPreferencias = async () => {
 			if (usuarioId) {
 				try {
-                    const csrfToken = localStorage.getItem("csrfToken");
-                    if (!csrfToken) {
-                        console.warn("CSRF token no disponible al cargar preferencias.");
-                        return;
-                    }
-					const res = await axios.get(`http://localhost:1000/usuarios/preferencias/listar/${usuarioId}`, {
-                        headers: {
-                            "CSRF-Token": csrfToken,
-                        },
-                        withCredentials: true,
-                    });
-					if (res.data && res.data.preferencias) {
-						setAppDarkMode(res.data.preferencias.tema === 'oscuro');
+					const preferencias = await obtenerPreferenciasUsuario(usuarioId);
+					if (preferencias && preferencias.tema) {
+						setAppDarkMode(preferencias.tema === 'oscuro');
 						// NO se carga la preferencia de sidebarMinimizado del backend para forzar que siempre esté abierta al inicio.
 						// Si deseas que el usuario pueda minificarla y que se guarde, esa lógica sigue funcionando
 						// a través del botón de minimizar.
@@ -327,8 +271,8 @@ function App() {
 		}
 	}, [navigate]);
 
-    // Log para verificar el estado de appSidebarMinify justo antes del render
-    console.log("Renderizando App. appSidebarMinify (IS_OPEN):", appSidebarMinify);
+	// Log para verificar el estado de appSidebarMinify justo antes del render
+	console.log("Renderizando App. appSidebarMinify (IS_OPEN):", appSidebarMinify);
 
 	return (
 		<AppSettings.Provider

@@ -12,7 +12,7 @@ export const obtenerCsrfToken = async () => {
 export const listarServiciosEmergencia = async () => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get('/servicios_emergencia/listar', {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -24,7 +24,7 @@ export const crearServicioEmergencia = async (servicio, usuarioId) => {
   const response = await axios.post('/servicios_emergencia/crear', 
     { ...servicio, usuarioId },
     {
-      headers: { "CSRF-Token": csrfToken },
+      headers: { "X-CSRF-Token": csrfToken },
       withCredentials: true
     }
   );
@@ -35,7 +35,7 @@ export const crearServicioEmergencia = async (servicio, usuarioId) => {
 export const actualizarServicioEmergencia = async (id, servicioEditado) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.put(`/servicios_emergencia/actualizar/${id}`, servicioEditado, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -45,7 +45,7 @@ export const actualizarServicioEmergencia = async (id, servicioEditado) => {
 export const eliminarServicioEmergencia = async (id) => {
   const csrfToken = localStorage.getItem("csrfToken");
   await axios.delete(`/servicios_emergencia/eliminar/${id}`, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
 };
@@ -54,7 +54,7 @@ export const eliminarServicioEmergencia = async (id) => {
 export const obtenerUsuarioLogeado = async (usuarioId) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get(`/usuarios/detalle/${usuarioId}`, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;

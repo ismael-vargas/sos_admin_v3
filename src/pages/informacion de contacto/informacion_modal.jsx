@@ -2,7 +2,7 @@
 /* -------------------*/
 import React, { useState } from "react";
 import PropTypes from "prop-types";
-import axios from "axios";
+import { actualizarUsuarioNumero } from "../../services/usuarios_numeros";
 import Swal from "sweetalert2"; // Importa SweetAlert
 
 function InformacionModal({ informacion, onClose, setInformaciones }) {
@@ -23,36 +23,24 @@ function InformacionModal({ informacion, onClose, setInformaciones }) {
     }
 
     try {
-      const response = await axios.put(
-        `http://localhost:1000/usuarios_numeros/actualizar/${informacion.id}`, // Ruta PUT para actualizar un número de usuario
-        { nombre, numero },
-        {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
+      const response = await actualizarUsuarioNumero(informacion.id, { nombre, numero });
+      // Actualiza el estado en el componente padre
+      setInformaciones((prevInformaciones) =>
+        prevInformaciones.map((info) =>
+          info.id === informacion.id ? { ...info, nombre, numero } : info
+        )
       );
+      setEditando(false); // Salimos del modo de edición
+      onClose(); // Cerramos el modal
 
-      if (response.status === 200) {
-        // Actualiza el estado en el componente padre
-        setInformaciones((prevInformaciones) =>
-          prevInformaciones.map((info) =>
-            info.id === informacion.id ? { ...info, nombre, numero } : info
-          )
-        );
-        setEditando(false); // Salimos del modo de edición
-        onClose(); // Cerramos el modal
-
-        // Mostrar alerta de éxito al editar
-        Swal.fire({
-          icon: "success",
-          title: "¡Edición exitosa!",
-          text: "El contacto ha sido actualizado correctamente.",
-          timer: 1500,
-          showConfirmButton: false,
-        });
-      }
+      // Mostrar alerta de éxito al editar
+      Swal.fire({
+        icon: "success",
+        title: "¡Edición exitosa!",
+        text: "El contacto ha sido actualizado correctamente.",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (error) {
       console.error("Error al guardar los cambios:", error.response?.data?.message || error.message);
       Swal.fire({

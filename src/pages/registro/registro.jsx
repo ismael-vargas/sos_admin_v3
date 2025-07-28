@@ -6,7 +6,7 @@ import personImg from "../../assets/img/person.png";
 import { registrarUsuario, obtenerCsrfToken } from "../../services/usuarios";
 
 // Importa los iconos que necesites
-// Asegúrate de importar FaEye y FaEyeSlash para el "ojito"
+// Asegúrate de importar FaUser y FaEyeSlash para el "ojito"
 import { FaUser, FaIdCard, FaMapMarkerAlt, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaCalendarAlt } from "react-icons/fa";
 
 const Registro = () => {
@@ -18,88 +18,124 @@ const Registro = () => {
     direccion: "",
     correo_electronico: "",
     contrasena: "",
-    fecha_nacimiento: "", // <-- Añadido aquí
+    fecha_nacimiento: "",
     estado: "activo"
   });
 
+  // NUEVO ESTADO: Para manejar el archivo de imagen seleccionado
+  const [selectedFile, setSelectedFile] = useState(null);
+
   const [csrfToken, setCsrfToken] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // <--- NUEVO ESTADO: Para controlar la visibilidad de la contraseña
+  const [showPassword, setShowPassword] = useState(false);
 
-   // --- ESTADOS PARA ANIMACIÓN ---
-  const [isLoaded, setIsLoaded] = useState(false); // Para la animación de entrada
-  const [isExiting, setIsExiting] = useState(false); // Para la animación de salida
+  // --- ESTADOS PARA ANIMACIÓN ---
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [isExiting, setIsExiting] = useState(false);
 
+  useEffect(() => {
+    setIsLoaded(true);
+    const fetchCsrfToken = async () => {
+      try {
+        const token = await obtenerCsrfToken();
+        setCsrfToken(token);
+        console.log('Token CSRF obtenido y establecido:', token);
+      } catch (error) {
+        console.error("Error al obtener el token CSRF:", error);
+        setErrorMessage("Error al cargar el formulario. Intente de nuevo.");
+      }
+    };
+    fetchCsrfToken();
+  }, []);
 
-
- useEffect(() => {
-  setIsLoaded(true);
-  const fetchCsrfToken = async () => {
-    try {
-      const token = await obtenerCsrfToken();
-      setCsrfToken(token);
-      console.log('Token obtenido:', token);
-    } catch (error) {
-      console.error("Error al obtener el token CSRF:", error);
-    }
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
-  fetchCsrfToken();
-}, []);
 
-const handleChange = (e) => {
-  setFormData({
-    ...formData,
-    [e.target.name]: e.target.value
-  });
-};
+  // NUEVA FUNCIÓN: Para manejar la selección de archivos
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+  };
 
-// <--- NUEVA FUNCIÓN: Para alternar la visibilidad de la contraseña
-const togglePasswordVisibility = () => {
-  setShowPassword(!showPassword);
-};
+  // Función para alternar la visibilidad de la contraseña
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  if (!csrfToken) {
-    setErrorMessage("Token CSRF no disponible. Recarga la página.");
-    return;
-  }
-  try {
-    const response = await registrarUsuario(formData, csrfToken);
-    console.log('Respuesta del servidor:', response);  // <-- solo response
-
-    if (response.message === "Usuario registrado exitosamente.") {
-      Swal.fire({
-        icon: "success",
-        title: "¡Usuario creado!",
-        text: "Tu cuenta se creó exitosamente.",
-        confirmButtonText: "Ir al login",
-        timer: 3000,
-        timerProgressBar: true
-      }).then(() => {
-        handleNavigateBack(e); // Usamos nuestra función para animar la salida
-      });
-    } else {
-      setErrorMessage(response.message || "Error al registrar el usuario.");
-    }
-  } catch (error) {
-    console.error("Error completo:", error);
-    console.error("Respuesta del error:", error.response?.data);  // ✅ Debug mejorado
-    setErrorMessage(error.response?.data?.message || "Error al conectar con el servidor.");
-  }
-};
-
-    // --- FUNCIÓN PARA ANIMAR LA SALIDA Y VOLVER AL LOGIN ---
+  // Función para animar la salida y volver al login
   const handleNavigateBack = (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Previene el comportamiento por defecto del Link si se usa
     setIsExiting(true); // Activa la animación de salida
     setTimeout(() => {
       navigate('/login'); // Navega después de 500ms
     }, 500);
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage(""); // Limpia cualquier mensaje de error previo
+
+    if (!csrfToken) {
+      setErrorMessage("Token CSRF no disponible. Recarga la página.");
+      return;
+    }
+
+    // IMPORTANTE: Crear un objeto FormData para enviar datos y archivos
+    // Esto es necesario porque tu backend usa 'express-fileupload'
+    const dataToSend = new FormData();
+    for (const key in formData) {
+      dataToSend.append(key, formData[key]);
+    }
+    if (selectedFile) {
+      // Asegúrate que 'photoUser' coincide con el nombre del campo que espera tu backend en req.files
+      dataToSend.append('photoUser', selectedFile);
+    }
+    // AÑADIDO: Asegurarse de que el CSRF token también se envíe en el cuerpo del FormData
+    // El middleware 'csurf' de Express a menudo busca el token en req.body._csrf
+    dataToSend.append('_csrf', csrfToken);
+
+
+    try {
+      // Llama a la función de registro con el FormData y el CSRF token
+      const response = await registrarUsuario(dataToSend, csrfToken);
+
+      console.log('Respuesta del servidor:', response);
+
+      if (response.message === "Usuario registrado exitosamente.") {
+        Swal.fire({
+          icon: "success",
+          title: "¡Usuario creado!",
+          text: "Tu cuenta se creó exitosamente.",
+          confirmButtonText: "Ir al login",
+          timer: 3000,
+          timerProgressBar: true
+        }).then(() => {
+          handleNavigateBack(e); // Usamos nuestra función para animar la salida
+        });
+      } else {
+        // Muestra el mensaje de error del backend si existe
+        setErrorMessage(response.message || "Error al registrar el usuario.");
+      }
+    } catch (error) {
+      console.error("Error completo en el registro:", error);
+      console.error("Respuesta del error:", error.response?.data);
+
+      // Intenta obtener el mensaje de error del backend
+      if (error.response && error.response.data && error.response.data.message) {
+        setErrorMessage(error.response.data.message);
+      } else if (error.response && error.response.data && error.response.data.error) {
+        setErrorMessage(error.response.data.error);
+      } else {
+        setErrorMessage("Error al conectar con el servidor. Por favor, intente de nuevo más tarde.");
+      }
+    }
+  };
+
   return (
-   <div className={`registro-outer-container ${isLoaded ? 'loaded' : ''} ${isExiting ? 'exiting' : ''}`}>
+    <div className={`registro-outer-container ${isLoaded ? 'loaded' : ''} ${isExiting ? 'exiting' : ''}`}>
       <div className="registro-bg"></div>
       <div className="registro-card">
         <div className="left-container">
@@ -117,11 +153,14 @@ const handleSubmit = async (e) => {
         <div className="right-container">
           <h2 className="titulo">Registro</h2>
           <form onSubmit={handleSubmit}>
+            {/* Campo oculto para el CSRF token (no es estrictamente necesario en FormData, pero no molesta) */}
+            <input type="hidden" name="_csrf" value={csrfToken} />
+
             <div className="form-columns">
               <div className="form-group">
                 <label className="etiqueta">Nombres *</label>
                 <div className="input-with-icon">
-                  <FaUser className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <FaUser className="input-icon left-icon" />
                   <input
                     type="text"
                     name="nombre"
@@ -137,7 +176,7 @@ const handleSubmit = async (e) => {
               <div className="form-group">
                 <label className="etiqueta">Cédula *</label>
                 <div className="input-with-icon">
-                  <FaIdCard className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <FaIdCard className="input-icon left-icon" />
                   <input
                     type="text"
                     name="cedula_identidad"
@@ -169,7 +208,7 @@ const handleSubmit = async (e) => {
               <div className="form-group">
                 <label className="etiqueta">Correo Electrónico *</label>
                 <div className="input-with-icon">
-                  <FaEnvelope className="input-icon left-icon" /> {/* Añade una clase para el icono izquierdo */}
+                  <FaEnvelope className="input-icon left-icon" />
                   <input
                     type="email"
                     name="correo_electronico"
@@ -182,7 +221,7 @@ const handleSubmit = async (e) => {
                 </div>
               </div>
 
-            {/* CAMPO DE FECHA DE NACIMIENTO FULL WIDTH */}
+              {/* CAMPO DE FECHA DE NACIMIENTO FULL WIDTH */}
               <div className="form-group full-width">
                 <label className="etiqueta">Fecha de Nacimiento *</label>
                 <div className="input-with-icon">
@@ -202,7 +241,7 @@ const handleSubmit = async (e) => {
                       borderRadius: "8px",
                       border: "1px solid #ccc",
                       height: "40px",
-                      paddingLeft: "40px" // 👈 Esto alinea el texto como los otros campos
+                      paddingLeft: "40px"
                     }}
                   />
                 </div>
@@ -251,7 +290,8 @@ const handleSubmit = async (e) => {
           </form>
 
           <p className="texto-enlace">
-            ¿Ya eres miembro?  <Link to="/login" className="enlace" onClick={handleNavigateBack}>
+            ¿Ya eres miembro?{" "}
+            <Link to="/login" className="enlace" onClick={handleNavigateBack}>
                 Haz clic aquí para iniciar sesión
             </Link>
           </p>

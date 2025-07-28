@@ -14,7 +14,7 @@ export const listarClientes = async (incluirEliminados = true) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const url = incluirEliminados ? '/clientes/listar?incluirEliminados=true' : '/clientes/listar';
   const response = await axios.get(url, {
-    headers: { "CSRF-Token": csrfToken }
+    headers: { "X-CSRF-Token": csrfToken }
   });
   return response.data;
 };
@@ -23,7 +23,7 @@ export const listarClientes = async (incluirEliminados = true) => {
 export const actualizarEstadoCliente = async (id, estado) => {
   const csrfToken = localStorage.getItem("csrfToken");
   await axios.put(`/clientes/actualizar/${id}`, { estado }, {
-    headers: { "CSRF-Token": csrfToken }
+    headers: { "X-CSRF-Token": csrfToken }
   });
 };
 
@@ -31,7 +31,7 @@ export const actualizarEstadoCliente = async (id, estado) => {
 export const eliminarCliente = async (id) => {
   const csrfToken = localStorage.getItem("csrfToken");
   await axios.put(`/clientes/actualizar/${id}`, { estado: "eliminado" }, {
-    headers: { "CSRF-Token": csrfToken }
+    headers: { "X-CSRF-Token": csrfToken }
   });
 };
 
@@ -39,7 +39,7 @@ export const eliminarCliente = async (id) => {
 export const obtenerNumerosCliente = async (clienteId) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get(`/clientes_numeros/listar/por-cliente/${clienteId}`, {
-    headers: { "CSRF-Token": csrfToken }
+    headers: { "X-CSRF-Token": csrfToken }
   });
   return response.data;
 };
@@ -48,7 +48,7 @@ export const obtenerNumerosCliente = async (clienteId) => {
 export const listarContactosEmergenciaPorCliente = async (clienteId) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get(`/contactos_emergencias/listar/por-cliente/${clienteId}`, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -58,7 +58,7 @@ export const listarContactosEmergenciaPorCliente = async (clienteId) => {
 export const eliminarContactoEmergencia = async (contactoId) => {
   const csrfToken = localStorage.getItem("csrfToken");
   await axios.delete(`/contactos_emergencias/eliminar/${contactoId}`, {
-    headers: { "X-CSRF-Token": csrfToken, "csrf-token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
 };

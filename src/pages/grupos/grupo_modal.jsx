@@ -1,7 +1,10 @@
 /* grupos_modal.jsx */
 /* -------------------*/
+
 import React, { useState } from "react";
 import PropTypes from "prop-types";
+import { actualizarGrupo, eliminarGrupo } from "../../services/grupos";
+import Swal from "sweetalert2";
 
 // Componente modal para mostrar información detallada de un grupo
 function GrupoModal({ grupo, onClose }) {
@@ -11,10 +14,73 @@ function GrupoModal({ grupo, onClose }) {
     // Función para manejar el cambio de estado
     const handleEstadoChange = (e) => setEstado(e.target.value);
 
-    // Función para guardar el estado editado
-    const guardarEstado = () => {
-        // Aquí podrías hacer una petición para guardar el estado si lo deseas
-        setEditandoEstado(false);
+
+    // Función para guardar el estado editado (actualiza en backend)
+    const guardarEstado = async () => {
+        try {
+            if (estado === "Inactivo") {
+                // Si el usuario selecciona "Inactivo", realiza el borrado lógico
+                await eliminarGrupo(grupo.id);
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Grupo eliminado!',
+                    text: 'El grupo ha sido eliminado correctamente.',
+                    timer: 1500,
+                    showConfirmButton: false,
+                });
+            } else {
+                // Si es "Activo", solo actualiza el estado
+                await actualizarGrupo(grupo.id, { estado: 'activo' });
+                Swal.fire({
+                    icon: "success",
+                    title: "¡Actualización exitosa!",
+                    text: "El estado del grupo ha sido actualizado.",
+                    timer: 1500,
+                    showConfirmButton: false,
+                });
+            }
+            setEditandoEstado(false);
+            onClose();
+        } catch (error) {
+            Swal.fire({
+                icon: "error",
+                title: "Error al actualizar",
+                text: error.response?.data?.message || error.message,
+            });
+        }
+    };
+
+    // Función para eliminar el grupo (borrado lógico en backend)
+    const handleEliminarGrupo = async () => {
+        const confirm = await Swal.fire({
+            title: '¿Está seguro de eliminar este grupo?',
+            text: 'Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
+        if (!confirm.isConfirmed) return;
+        try {
+            await eliminarGrupo(grupo.id);
+            Swal.fire({
+                icon: 'success',
+                title: '¡Grupo eliminado!',
+                text: 'El grupo ha sido eliminado correctamente.',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+            onClose();
+        } catch (error) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al eliminar',
+                text: error.response?.data?.message || error.message,
+            });
+        }
     };
 
     // Función para cerrar el modal y realizar acciones adicionales
@@ -203,7 +269,7 @@ function GrupoModal({ grupo, onClose }) {
                             )}
                             <button
                                 className="btn d-flex align-items-center justify-content-center"
-                                onClick={cerrarModal}
+                                onClick={handleEliminarGrupo}
                                 style={{ 
                                     backgroundColor: "#dc3545",
                                     color: "white",

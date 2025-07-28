@@ -13,7 +13,7 @@ export const obtenerCsrfToken = async () => {
 export const listarRoles = async () => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get('/roles/listar', {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -23,7 +23,7 @@ export const listarRoles = async () => {
 export const crearRol = async (nombre) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.post('/roles/crear', { nombre }, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -33,7 +33,7 @@ export const crearRol = async (nombre) => {
 export const actualizarRol = async (id, rolEditado) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.put(`/roles/actualizar/${id}`, rolEditado, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;
@@ -43,7 +43,7 @@ export const actualizarRol = async (id, rolEditado) => {
 export const eliminarRol = async (id) => {
   const csrfToken = localStorage.getItem("csrfToken");
   await axios.delete(`/roles/eliminar/${id}`, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
 };
@@ -52,7 +52,7 @@ export const eliminarRol = async (id) => {
 export const obtenerUsuarioLogeado = async (usuarioId) => {
   const csrfToken = localStorage.getItem("csrfToken");
   const response = await axios.get(`/usuarios/detalle/${usuarioId}`, {
-    headers: { "CSRF-Token": csrfToken },
+    headers: { "X-CSRF-Token": csrfToken },
     withCredentials: true
   });
   return response.data;

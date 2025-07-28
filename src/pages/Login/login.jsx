@@ -28,13 +28,12 @@ const Login = () => {
   const fetchCsrfToken = async () => {
     try {
       const response = await instance.get("/csrf-token");
-      // Almacena el token en el estado y en localStorage
-      setCsrfToken(response.data.data.csrfToken); 
-      localStorage.setItem("csrfToken", response.data.data.csrfToken); 
-      return response.data.data.csrfToken; 
+      // Cambia aquí: ahora el token está en response.data.csrfToken
+      setCsrfToken(response.data.csrfToken); 
+      localStorage.setItem("csrfToken", response.data.csrfToken); 
+      return response.data.csrfToken; 
     } catch (error) {
       console.error("Error al obtener el token CSRF:", error);
-      // Puedes mostrar una alerta si no se puede obtener el token inicial
       Swal.fire({
         icon: "error",
         title: "Error de seguridad",

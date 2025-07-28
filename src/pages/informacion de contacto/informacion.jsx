@@ -1,8 +1,7 @@
 /* informacion_contacto_usuario.jsx */
 /* -------------------*/
-// Importación de bibliotecas y componentes necesarios
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import { listarUsuariosNumeros, crearUsuarioNumero, eliminarUsuarioNumero } from '../../services/usuarios_numeros';
 import { Panel, PanelHeader, PanelBody } from "../../components/panel/panel.jsx";
 import { Search } from "lucide-react";
 import InformacionModal from "./informacion_modal.jsx";
@@ -102,9 +101,23 @@ function InformacionContactosUsuarios() {
         if (!usuarioId) {
           throw new Error("No se encontró el ID del usuario en localStorage. Inicia sesión de nuevo.");
         }
-        // Asegúrate de que esta ruta sea correcta para obtener los datos del usuario logeado
-        const response = await axios.get(`http://localhost:1000/usuarios/detalle/${usuarioId}`, { withCredentials: true });
-        setUsuarioLogeado(response.data);
+        // Usa el servicio usuarios_numeros.js para obtener el usuario logeado
+        // Si tienes un servicio usuarios.js, deberías importar y usar una función getUsuarioDetalle(usuarioId)
+        // Por ahora, hacemos fetch directo con fetch (sin axios)
+        const csrfToken = localStorage.getItem("csrfToken");
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://backsos911-production.up.railway.app'}/usuarios/detalle/${usuarioId}`,
+          {
+            credentials: 'include',
+            headers: {
+              'X-CSRF-Token': csrfToken
+            }
+          });
+        const data = await response.json();
+        if (data && data.usuario) {
+          setUsuarioLogeado(data.usuario);
+        } else {
+          setUsuarioLogeado(data);
+        }
       } catch (error) {
         console.error("Error al obtener el usuario logeado:", error.message);
         setUsuarioLogeado(null);
@@ -122,9 +135,12 @@ function InformacionContactosUsuarios() {
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
-        const response = await axios.get("http://localhost:1000/csrf-token", { withCredentials: true });
-        // El backend devuelve el token dentro de un objeto 'data'
-        const token = response.data.data?.csrfToken || response.data.csrfToken; 
+        // Usa fetch para obtener el token CSRF
+        const response = await fetch(`${process.env.REACT_APP_API_URL || 'https://backsos911-production.up.railway.app'}/csrf-token`, {
+          credentials: 'include'
+        });
+        const data = await response.json();
+        const token = data.data?.csrfToken || data.csrfToken;
         if (token) {
           localStorage.setItem("csrfToken", token);
         } else {
@@ -139,25 +155,19 @@ function InformacionContactosUsuarios() {
         });
       }
     };
-
     fetchCsrfToken();
   }, []);
 
   // Función para obtener la lista de informaciones (números de usuario)
   const fetchInformaciones = async () => {
     try {
-      const response = await axios.get("http://localhost:1000/usuarios_numeros/listar", {
-        withCredentials: true,
-      });
-
-      // Mapear los datos para incluir el campo 'eliminado' basado en el 'estado'
-      const datos = response.data.map((item) => ({
+      const data = await listarUsuariosNumeros();
+      const datos = data.map((item) => ({
         id: item.id,
         nombre: item.nombre,
         numero: item.numero,
-        eliminado: item.estado === "eliminado", // Asumiendo que el backend envía 'estado'
+        eliminado: item.estado === "eliminado",
       }));
-
       setInformaciones(datos);
     } catch (error) {
       console.error("Error al obtener la información:", error.message);
@@ -213,16 +223,7 @@ function InformacionContactosUsuarios() {
       );
 
       for (const id of usuariosSeleccionados) {
-        // Llama al endpoint de eliminación lógica del backend
-        await axios.delete(
-          `http://localhost:1000/usuarios_numeros/eliminar/${id}`,
-          {
-            headers: {
-              "CSRF-Token": csrfToken,
-            },
-            withCredentials: true,
-          }
-        );
+        await eliminarUsuarioNumero(id);
       }
       setUsuariosSeleccionados([]);
       Swal.fire({
@@ -266,7 +267,7 @@ function InformacionContactosUsuarios() {
       });
       return;
     }
-    if (!usuarioLogeado || !usuarioLogeado.id) {
+    if (!usuarioLogeado || !(usuarioLogeado.id || usuarioLogeado._id)) {
       Swal.fire({
         icon: "error",
         title: "Usuario no identificado",
@@ -275,33 +276,23 @@ function InformacionContactosUsuarios() {
       return;
     }
     try {
-      const response = await axios.post(
-        "http://localhost:1000/usuarios_numeros/crear", // Endpoint POST para crear un número de usuario
-        {
-          nombre: nuevoUsuario.nombre,
-          numero: nuevoUsuario.numero,
-          usuarioId: usuarioLogeado.id, // Envía el ID del usuario logeado
-        },
-        {
-          headers: {
-            "CSRF-Token": csrfToken,
-          },
-          withCredentials: true,
-        }
-      );
-      // Si la creación es exitosa, actualiza la lista de informaciones
-      if (response.data && response.data.usuarioNumero) {
+      const response = await crearUsuarioNumero({
+        nombre: nuevoUsuario.nombre,
+        numero: nuevoUsuario.numero,
+        usuarioId: usuarioLogeado.id || usuarioLogeado._id,
+      });
+      if (response && response.usuarioNumero) {
         setInformaciones((prevInformaciones) => [
           {
-            id: response.data.usuarioNumero.id,
-            nombre: response.data.usuarioNumero.nombre, // Usa el nombre descifrado del backend
-            numero: response.data.usuarioNumero.numero, // Usa el número descifrado del backend
-            eliminado: false, // Nuevo registro no está eliminado
+            id: response.usuarioNumero.id,
+            nombre: response.usuarioNumero.nombre,
+            numero: response.usuarioNumero.numero,
+            eliminado: false,
           },
           ...prevInformaciones,
         ]);
-        setNuevoUsuario({ nombre: "", numero: "" }); // Limpia el formulario
-        setMostrarFormulario(false); // Cierra el modal de formulario
+        setNuevoUsuario({ nombre: "", numero: "" });
+        setMostrarFormulario(false);
         Swal.fire({
           icon: "success",
           title: "¡Número agregado!",
